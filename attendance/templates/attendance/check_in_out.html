@@ -1,0 +1,9 @@
+{% extends 'attendance/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Check In/Out for {{ employee }}</h2>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Record Check-In/Out</button>
+</form>
+{% endblock %}
