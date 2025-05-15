@@ -50,13 +50,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+        # 'attendance.middleware.RestrictIPMiddleware',
+
 ]
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'employee_list'
 LOGOUT_REDIRECT_URL = 'login'
 
 ROOT_URLCONF = 'Attendance_Emp.urls'
 
+SECRET_KEY = 'your-secret-key'
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 class Department(models.Model):
     name = models.CharField(max_length=100)
@@ -8,6 +9,7 @@ class Department(models.Model):
         return self.name
 
 class Employee(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     employee_id = models.CharField(max_length=10, unique=True)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -23,12 +25,12 @@ class Attendance(models.Model):
     check_out = models.DateTimeField(null=True, blank=True)
     hours_worked = models.FloatField(null=True, blank=True)
     date = models.DateField(default=timezone.now)
+    comments = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if self.check_out and self.check_in:
-            # Calculate hours worked
             delta = self.check_out - self.check_in
-            self.hours_worked = delta.total_seconds() / 3600  # Convert to hours
+            self.hours_worked = delta.total_seconds() / 3600
         super().save(*args, **kwargs)
 
     def __str__(self):

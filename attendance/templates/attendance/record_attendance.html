@@ -1,0 +1,13 @@
+{% extends 'attendance/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Record Attendance for {{ employee }}</h2>
+<form method="post" class="w-50">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="comments" class="form-label">Comments</label>
+        <textarea class="form-control" id="comments" name="comments" rows="4"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Record Check-In/Out</button>
+</form>
+{% endblock %}

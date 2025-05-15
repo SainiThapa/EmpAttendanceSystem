@@ -1,0 +1,48 @@
+{% extends 'attendance/base.html' %}
+
+{% block content %}
+<h2 class="mb-4">Dashboard for {{ employee }}</h2>
+
+<h3>Today's Attendance</h3>
+<div class="card mb-4">
+    <div class="card-body">
+        {% if today_attendance %}
+            <p><strong>Check-In:</strong> {{ today_attendance.check_in|date:"H:i:s" }}</p>
+            <p><strong>Check-Out:</strong> {{ today_attendance.check_out|date:"H:i:s"|default:"Not recorded" }}</p>
+            <p><strong>Hours Worked:</strong> {{ today_attendance.hours_worked|floatformat:2|default:"-" }}</p>
+            <p><strong>Comments:</strong> {{ today_attendance.comments|default:"None" }}</p>
+        {% else %}
+            <p>No attendance recorded for today.</p>
+        {% endif %}
+        <a href="{% url 'record_attendance' %}" class="btn btn-primary">Record Attendance</a>
+    </div>
+</div>
+
+<h3>Attendance History</h3>
+<div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Date</th>
+                <th>Check-In</th>
+                <th>Check-Out</th>
+                <th>Hours Worked</th>
+                <th>Comments</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in history %}
+            <tr>
+                <td>{{ record.date }}</td>
+                <td>{{ record.check_in|date:"H:i:s" }}</td>
+                <td>{{ record.check_out|date:"H:i:s"|default:"-" }}</td>
+                <td>{{ record.hours_worked|floatformat:2|default:"-" }}</td>
+                <td>{{ record.comments|default:"None" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">No attendance history found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,44 +1,51 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from .models import Employee, Attendance
 
-def is_staff_or_superuser(user):
-    return user.is_staff or user.is_superuser
-
 @login_required
-def employee_list(request):
-    employees = Employee.objects.all()
-    return render(request, 'attendance/employee_list.html', {'employees': employees})
+def dashboard(request):
+    try:
+        employee = request.user.employee
+    except Employee.DoesNotExist:
+        messages.error(request, "You are not registered as an employee.")
+        return redirect('login')
 
-@login_required
-def attendance_history(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
-    attendance_records = Attendance.objects.filter(employee=employee).order_by('-date')
-    return render(request, 'attendance/attendance_history.html', {
+    today = timezone.now().date()
+    attendance = Attendance.objects.filter(employee=employee, date=today).first()
+    history = Attendance.objects.filter(employee=employee).exclude(date=today).order_by('-date')
+
+    return render(request, 'attendance/dashboard.html', {
         'employee': employee,
-        'attendance_records': attendance_records
+        'today_attendance': attendance,
+        'history': history
     })
 
 @login_required
-@user_passes_test(is_staff_or_superuser)
-def check_in_out(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
+def record_attendance(request):
+    try:
+        employee = request.user.employee
+    except Employee.DoesNotExist:
+        messages.error(request, "You are not registered as an employee.")
+        return redirect('login')
+
     if request.method == 'POST':
         today = timezone.now().date()
+        comments = request.POST.get('comments', '')
         attendance, created = Attendance.objects.get_or_create(
             employee=employee,
             date=today,
-            defaults={'check_in': timezone.now()}
+            defaults={'check_in': timezone.now(), 'comments': comments}
         )
         if not created and not attendance.check_out:
             attendance.check_out = timezone.now()
+            attendance.comments = comments
             attendance.save()
-            messages.success(request, f"Check-out recorded for {employee}.")
+            messages.success(request, "Check-out recorded successfully.")
         elif not created and attendance.check_out:
-            messages.warning(request, f"Attendance already completed for {employee} today.")
+            messages.warning(request, "Attendance already completed for today.")
         else:
-            messages.success(request, f"Check-in recorded for {employee}.")
-        return redirect('attendance_history', employee_id=employee.id)
-    return render(request, 'attendance/check_in_out.html', {'employee': employee})
+            messages.success(request, "Check-in recorded successfully.")
+        return redirect('dashboard')
+    return render(request, 'attendance/record_attendance.html', {'employee': employee})
