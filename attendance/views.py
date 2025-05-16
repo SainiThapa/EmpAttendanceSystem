@@ -30,22 +30,32 @@ def record_attendance(request):
         messages.error(request, "You are not registered as an employee.")
         return redirect('login')
 
+    today = timezone.now().date()
+    attendance = Attendance.objects.filter(employee=employee, date=today).first()
+    is_checked_in = attendance and not attendance.check_out  # True if checked in but not checked out
+
     if request.method == 'POST':
-        today = timezone.now().date()
         comments = request.POST.get('comments', '')
-        attendance, created = Attendance.objects.get_or_create(
-            employee=employee,
-            date=today,
-            defaults={'check_in': timezone.now(), 'comments': comments}
-        )
-        if not created and not attendance.check_out:
+        if not attendance:
+            # Check-in
+            Attendance.objects.create(
+                employee=employee,
+                check_in=timezone.now(),
+                date=today,
+                comments=comments
+            )
+            messages.success(request, "Check-in recorded successfully.")
+        elif is_checked_in:
+            # Check-out
             attendance.check_out = timezone.now()
             attendance.comments = comments
             attendance.save()
             messages.success(request, "Check-out recorded successfully.")
-        elif not created and attendance.check_out:
-            messages.warning(request, "Attendance already completed for today.")
         else:
-            messages.success(request, "Check-in recorded successfully.")
+            messages.warning(request, "Attendance already completed for today.")
         return redirect('dashboard')
-    return render(request, 'attendance/record_attendance.html', {'employee': employee})
+
+    return render(request, 'attendance/record_attendance.html', {
+        'employee': employee,
+        'is_checked_in': is_checked_in
+    })

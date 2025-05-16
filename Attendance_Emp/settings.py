@@ -54,6 +54,7 @@ MIDDLEWARE = [
 
 ]
 LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL='dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 ROOT_URLCONF = 'Attendance_Emp.urls'

@@ -8,6 +8,8 @@
         <label for="comments" class="form-label">Comments</label>
         <textarea class="form-control" id="comments" name="comments" rows="4"></textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Record Check-In/Out</button>
+    <button type="submit" class="btn btn-primary">
+        {% if is_checked_in %}Check Out{% else %}Check In{% endif %}
+    </button>
 </form>
 {% endblock %}
