@@ -31,6 +31,8 @@ class Attendance(models.Model):
         if self.check_out and self.check_in:
             delta = self.check_out - self.check_in
             self.hours_worked = delta.total_seconds() / 3600
+        else:
+            self.hours_worked = None
         super().save(*args, **kwargs)
 
     def __str__(self):

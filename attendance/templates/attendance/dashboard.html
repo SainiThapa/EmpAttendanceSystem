@@ -1,7 +1,8 @@
 {% extends 'attendance/base.html' %}
+{% load attendance_tags %}
 
 {% block content %}
-<h2 class="mb-4">Dashboard for {{ employee }}</h2>
+<h2 class="mb-4">Dashboard for {{ employee.first_name }} {{employee.last_name}}</h2>
 
 <h3>Today's Attendance</h3>
 <div class="card mb-4">
@@ -9,7 +10,7 @@
         {% if today_attendance %}
             <p><strong>Check-In:</strong> {{ today_attendance.check_in|date:"H:i:s" }}</p>
             <p><strong>Check-Out:</strong> {{ today_attendance.check_out|date:"H:i:s"|default:"Not recorded" }}</p>
-            <p><strong>Hours Worked:</strong> {{ today_attendance.hours_worked|floatformat:2|default:"-" }}</p>
+            <p><strong>Hours Worked:</strong> {{ today_attendance.hours_worked|format_hours }}</p>
             <p><strong>Comments:</strong> {{ today_attendance.comments|default:"None" }}</p>
         {% else %}
             <p>No attendance recorded for today.</p>
@@ -36,7 +37,7 @@
                 <td>{{ record.date }}</td>
                 <td>{{ record.check_in|date:"H:i:s" }}</td>
                 <td>{{ record.check_out|date:"H:i:s"|default:"-" }}</td>
-                <td>{{ record.hours_worked|floatformat:2|default:"-" }}</td>
+                <td>{{ record.hours_worked|format_hours }}</td>
                 <td>{{ record.comments|default:"None" }}</td>
             </tr>
             {% empty %}

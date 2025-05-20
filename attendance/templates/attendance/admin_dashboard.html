@@ -1,0 +1,68 @@
+{% extends 'attendance/base.html' %}
+{% load attendance_tags %}
+
+{% block content %}
+<h2 class="mb-4">Admin Dashboard</h2>
+
+<h3>Monthly Attendance Summary - {{ current_month }} {{ current_year }}</h3>
+<div class="card mb-4">
+    <div class="card-body">
+        <p><strong>Total Working Days (Excluding Weekends):</strong> {{ working_days }}</p>
+        <h4>Employee Presence</h4>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Employee</th>
+                        <th>Days Present</th>
+                        <th>Total Hours Worked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for summary in attendance_summary %}
+                    <tr>
+                        <td>{{ summary.employee }}</td>
+                        <td>{{ summary.present_days }}</td>
+                        <td>{{ summary.total_hours|format_hours }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center">No employees found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<h3>All Attendance Records</h3>
+<div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Employee</th>
+                <th>Date</th>
+                <th>Check-In</th>
+                <th>Check-Out</th>
+                <th>Hours Worked</th>
+                <th>Comments</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in attendance_records %}
+            <tr>
+                <td>{{ record.employee }}</td>
+                <td>{{ record.date }}</td>
+                <td>{{ record.check_in|date:"H:i:s" }}</td>
+                <td>{{ record.check_out|date:"H:i:s"|default:"-" }}</td>
+                <td>{{ record.hours_worked|format_hours }}</td>
+                <td>{{ record.comments|default:"None" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center">No attendance records found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<a href="{% url 'reset_attendance' %}" class="btn btn-danger mt-3">Reset All Attendance Records</a>
+{% endblock %}
