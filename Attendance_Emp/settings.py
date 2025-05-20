@@ -59,8 +59,8 @@ LOGOUT_REDIRECT_URL = 'login'
 
 ROOT_URLCONF = 'Attendance_Emp.urls'
 
-SECRET_KEY = 'your-secret-key'
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+SECRET_KEY = 'AKtfXIwZC9dS4PonHgbVhA26fu_ypDFGWdNoSuoZfpXhRiJis6H3ITHwuAlxZ7hCY9c'
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','Fynova.pythonanywhere.com']
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
