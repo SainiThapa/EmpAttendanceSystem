@@ -1,9 +1,107 @@
 {% extends 'attendance/base.html' %}
+{% load static %}
 
 {% block content %}
-<h2 class="mb-4">Check In/Out for {{ employee }}</h2>
-<form method="post">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-primary">Record Check-In/Out</button>
-</form>
+<!-- Include Font Awesome for icons -->
+ <script src="https://kit.fontawesome.com/cc454f1574.js" crossorigin="anonymous"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+<!-- Include custom CSS -->
+<link rel="stylesheet" href="{% static 'attendance/css/attendance.css' %}">
+
+<div class="floating-shapes">
+    <div class="shape">
+        <i class="fas fa-clock fa-3x"></i>
+    </div>
+    <div class="shape">
+        <i class="fas fa-calendar fa-2x"></i>
+    </div>
+    <div class="shape">
+        <i class="fas fa-user-check fa-2x"></i>
+    </div>
+</div>
+
+<div class="main-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <div class="attendance-card">
+                    <div class="card-body p-5 text-center">
+                        <h2 class="mb-4" style="color: #333; font-weight: 700;">
+                            <i class="fas fa-user-clock me-2"></i>
+                            Attendance Portal
+                        </h2>
+                        
+                        <div class="employee-info mb-4">
+                            <h4 style="color: #667eea;">{{ employee.full_name|default:employee }}</h4>
+                            <p class="text-muted">{{ employee.designation|default:'Employee' }}</p>
+                        </div>
+
+                        <div class="time-display">
+                            <div class="current-time" id="currentTime">12:30:45</div>
+                            <div class="current-date" id="currentDate">Wednesday, June 11, 2025</div>
+                        </div>
+
+                        <div class="status-indicator status-checked-out pulse" id="statusIndicator">
+                            <div class="inner">
+                                <i class="fas fa-sign-in-alt status-icon" id="statusIcon"></i>
+                            </div>
+                        </div>
+
+                        <div class="status-info mb-4">
+                            <div class="status-text" id="statusText">Ready to Check In</div>
+                            <div class="status-subtext" id="statusSubtext">Click the button below to record your attendance</div>
+                        </div>
+
+                        <button class="comments-toggle" id="commentsToggle">
+                            <i class="fas fa-comment me-2"></i>
+                            Add Comments
+                        </button>
+
+                        <div class="comments-section" id="commentsSection">
+                            <div class="mb-3">
+                                <label for="comments" class="form-label">
+                                    <i class="fas fa-sticky-note me-2"></i>
+                                    Comments (Optional)
+                                </label>
+                                <textarea class="form-control" id="comments" name="comments" rows="3" 
+                                        placeholder="Add any notes about your work day..."></textarea>
+                            </div>
+                        </div>
+
+                        <form method="post" id="attendanceForm">
+                            {% csrf_token %}
+                            <input type="hidden" name="comments" id="hiddenComments">
+                            <button type="submit" class="action-btn" id="actionBtn">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                <span id="btnText">Check In</span>
+                            </button>
+                        </form>
+
+                        <div class="mt-4">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Your attendance will be recorded with timestamp
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include custom JavaScript -->
+<script src="{% static 'attendance/js/attendance.js' %}"></script>
+
+<!-- Optional: Set initial status based on Django context -->
+{% if user_checked_in %}
+<script>
+    // Set initial status if user is already checked in
+    document.addEventListener('DOMContentLoaded', function() {
+        AttendanceUtils.setInitialStatus(true);
+    });
+</script>
+{% endif %}
+
 {% endblock %}

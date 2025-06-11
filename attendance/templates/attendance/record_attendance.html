@@ -1,20 +1,72 @@
 {% extends 'attendance/base.html' %}
+{% load static %}
+
 {% block content %}
-<div class="container">
-    <h2 class="mb-4 fw-bold text-primary">Record Attendance for {{ employee }}</h2>
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form method="post" class="w-50 mx-auto">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label for="comments" class="form-label">Comments</label>
-                    <textarea class="form-control" id="comments" name="comments" rows="4"></textarea>
+<!-- Main container with Bootstrap styling -->
+<div class="container my-5">
+    <!-- Header with gradient text and Font Awesome clock icon -->
+    <h2 class="mb-4 fw-bold text-center" style="background: linear-gradient(90deg, #0d6efd, #6610f2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        <i class="fas fa-clock me-2"></i> Record Attendance for {{ employee.first_name }} {{ employee.last_name }}
+    </h2>
+
+    <!-- Main card with shadow and gradient border -->
+    <div class="card shadow-lg border-0" style="border-left: 5px solid #0d6efd; max-width: 600px; margin: auto;">
+        <div class="card-body p-4">
+            <!-- SVG clock with animated hands -->
+            <div class="text-center mb-4">
+                <div class="clock-container mx-auto" style="width: 120px; height: 120px;">
+                    <svg class="clock-svg" viewBox="0 0 100 100" width="120" height="120">
+                        <!-- Clock face -->
+                        <circle cx="50" cy="50" r="45" fill="#f8f9fa" stroke="#0d6efd" stroke-width="5"/>
+                        <!-- Hour markers -->
+                        <line x1="50" y1="10" x2="50" y2="15" stroke="#343a40" stroke-width="3" class="hour-marker"/>
+                        <line x1="50" y1="85" x2="50" y2="90" stroke="#343a40" stroke-width="3" class="hour-marker" transform="rotate(180 50 50)"/>
+                        <line x1="85" y1="50" x2="90" y2="50" stroke="#343a40" stroke-width="3" class="hour-marker" transform="rotate(90 50 50)"/>
+                        <line x1="10" y1="50" x2="15" y2="50" stroke="#343a40" stroke-width="3" class="hour-marker" transform="rotate(270 50 50)"/>
+                        <!-- Hour hand -->
+                        <line x1="50" y1="50" x2="50" y2="30" stroke="#0d6efd" stroke-width="4" class="hour-hand"/>
+                        <!-- Minute hand -->
+                        <line x1="50" y1="50" x2="50" y2="20" stroke="#6610f2" stroke-width="3" class="minute-hand"/>
+                        <!-- Second hand -->
+                        <line x1="50" y1="50" x2="50" y2="15" stroke="#dc3545" stroke-width="2" class="second-hand"/>
+                        <!-- Center dot -->
+                        <circle cx="50" cy="50" r="3" fill="#343a40"/>
+                    </svg>
                 </div>
-                <button type="submit" class="btn btn-primary">
-                    {% if is_checked_in %}Check Out{% else %}Check In{% endif %}
-                </button>
+                <!-- Time and date display -->
+                <p class="fw-bold text-primary mt-3" id="current-datetime"></p>
+                <p class="text-muted"><small>Timezone: Asia/Kathmandu (+05:45)</small></p>
+            </div>
+
+            <!-- Form for attendance -->
+            <form method="post" class="text-center">
+                {% csrf_token %}
+                <!-- Button group for punch-in/out and comments toggle -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <!-- Comments toggle button (secondary, left) -->
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#commentsSection" aria-expanded="false" aria-controls="commentsSection">
+                        <i class="fas fa-comment-dots me-1"></i> Add Comments
+                    </button>
+                    <!-- Punch-in/out button (primary, right) -->
+                    <button type="submit" class="btn btn-lg btn-punch {% if is_checked_in %}btn-danger{% else %}btn-success{% endif %}">
+                        <i class="fas {% if is_checked_in %}fa-sign-out-alt{% else %}fa-sign-in-alt{% endif %} me-2"></i>
+                        {% if is_checked_in %}Punch Out{% else %}Punch In{% endif %}
+                    </button>
+                </div>
+
+                <!-- Collapsible comments section (hidden by default) -->
+                <div class="collapse" id="commentsSection">
+                    <div class="mb-3">
+                        <label for="comments" class="form-label fw-bold">Comments</label>
+                        <textarea class="form-control shadow-sm" id="comments" name="comments" rows="3" placeholder="Enter any remarks..."></textarea>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Load custom CSS and JS -->
+<link rel="stylesheet" href="{% static 'attendance/css/attendance.css' %}">
+<script src="{% static 'attendance/js/attendance.js' %}"></script>
 {% endblock %}
