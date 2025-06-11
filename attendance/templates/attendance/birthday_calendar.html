@@ -1,0 +1,70 @@
+{% extends 'attendance/base.html' %}
+{% load static %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4 fw-bold text-center text-primary">Employee Birthday Calendar</h2>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h3 class="mb-3 text-center">Birthdays by Month</h3>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" style="font-size: 0.9rem;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" style="width: 10%; position: sticky; left: 0; background: #343a40; z-index: 1;">Month</th>
+                            {% for day in '1234567890123456789012345678901' %}
+                                <th scope="col" class="text-center">{{ forloop.counter }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for month_data in birthday_data reversed %}
+                            <tr>
+                                <td style="position: sticky; left: 0; background: #fff; z-index: 1;">{{ month_data.month }}</td>
+                                {% for day in month_data.days %}
+                                    <td class="text-center birthday-cell"
+                                        style="background-color: {% if day.count > 0 %}rgba(13, 110, 253, {{ day.count|floatformat:2 }}) {% else %}#fff{% endif %};"
+                                        {% if day.count > 0 %}
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="hover"
+                                            data-bs-placement="top"
+                                            data-bs-html="true"
+                                            data-bs-content="{% for emp in day.employees %}<div><strong>{{ emp.first_name }} {{ emp.last_name }}</strong><br>Dept: {{ emp.department }}<br>Position: {{ emp.position }}</div>{% if not forloop.last %}<hr>{% endif %}{% endfor %}"
+                                        {% endif %}
+                                    
+                                        {% if day.count > 0 %}<span class="badge bg-light text-dark">{{ day.count }}</span>{% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+});
+</script>
+
+<style>
+.birthday-cell {
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    cursor: pointer;
+}
+.birthday-cell:hover {
+    transform: scale(1.05);
+    z-index: 2;
+}
+.popover {
+    max-width: 300px;
+}
+.popover-body {
+    font-size: 0.85rem;
+    padding: 10px;
+}
+</style>
+{% endblock %}

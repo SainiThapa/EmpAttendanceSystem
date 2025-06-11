@@ -1,0 +1,34 @@
+{% extends 'attendance/base.html' %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4 fw-bold text-primary">Employee List</h2>
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Position</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in employees %}
+                <tr>
+                    <td>{{ employee.employee_id }}</td>
+                    <td>{{ employee.first_name }} {{ employee.last_name }}</td>
+                    <td>{{ employee.department|default:"Not assigned" }}</td>
+                    <td>{{ employee.position|default:"Not provided" }}</td>
+                    <td>
+                        <a href="{% url 'admin_employee_detail' employee.id %}" class="btn btn-primary btn-sm">View Details</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">No employees found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

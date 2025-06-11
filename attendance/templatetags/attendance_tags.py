@@ -9,7 +9,7 @@ def format_hours(value):
     hours = int(value)
     minutes = int((value - hours) * 60)
     if hours == 0 and minutes == 0:
-        return "0 minutes"
+        return "-"
     parts = []
     if hours > 0:
         parts.append(f"{hours} hour{'s' if hours != 1 else ''}")

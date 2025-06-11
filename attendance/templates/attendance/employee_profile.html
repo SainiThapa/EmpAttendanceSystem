@@ -1,0 +1,77 @@
+{% extends 'attendance/base.html' %}
+{%load static%}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4 fw-bold text-center text-primary">Employee Profile</h2>
+    <div class="card shadow-sm mb-4 profile-card">
+        <div class="card-header bg-primary text-white text-center">
+            <h3 class="mb-0">{{ employee.first_name }} {{ employee.last_name }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center mb-3">
+                    <div class="card shadow-sm p-2">
+                        <img src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'attendance/img/default_image.jpg' %}{% endif %}" alt="Profile Picture" class="profile-img">
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Employee ID:</strong> {{ employee.employee_id }}</p>
+                            <p><strong>Department:</strong> {{ employee.department|default:"Not assigned" }}</p>
+                            <p><strong>Position:</strong> {{ employee.position|default:"Not provided" }}</p>
+                            <p><strong>Email:</strong> {{ employee.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Address:</strong> {{ employee.address|default:"Not provided" }}</p>
+                            <p><strong>Date of Birth:</strong> {{ employee.dob|date:"Y-m-d"|default:"Not provided" }}</p>
+                            <p><strong>Date of Birth (Nepali):</strong> {{ employee.dob_nepali|default:"Not provided" }}</p>
+                            <p><strong>Bank Details:</strong></p>
+                            <ul>
+                                <li><strong>Name:</strong> {{ employee.bank_name|default:"Not provided" }}</li>
+                                <li><strong>Account Number:</strong> {{ employee.bank_account_number|default:"Not provided" }}</li>
+                                <li><strong>Holder Name:</strong> {{ employee.bank_account_holder_name|default:"Not provided" }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <h3 class="mb-4 fw-bold text-primary text-center">Recent Attendance</h3>
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th>Hours Worked</th>
+                    <th>Status</th>
+                    <th>Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in attendance_records %}
+                    <tr>
+                        <td>{{ record.date }}</td>
+                        <td>{{ record.check_in|time:"H:i:s"|default:"-" }}</td>
+                        <td>{{ record.check_out|time:"H:i:s"|default:"-" }}</td>
+                        <td>{{ record.hours_worked|floatformat:2|default:"-" }}</td>
+                        <td>
+                            {% if record.status == 'Present' %}
+                                <span class="badge bg-success">{{ record.status }}</span>
+                            {% else %}
+                                <span class="badge bg-danger">{{ record.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.comments|default:"None" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" class="text-center">No attendance records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
