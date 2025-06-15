@@ -3,6 +3,14 @@
 {% block content %}
 <div class="container">
     <h2 class="mb-4 fw-bold text-center text-primary">Employee Birthday Calendar</h2>
+    
+    <!-- Today's Date Info -->
+    <div class="alert alert-info text-center mb-4">
+        <i class="fas fa-calendar-day me-2"></i>
+        <strong>Today's Nepali Date:</strong> 
+        {{ today_nepali_date.day }} {{ mahina }} {{ today_nepali_date.year }}
+    </div>
+    
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h3 class="mb-3 text-center">Birthdays by Month</h3>
@@ -17,12 +25,31 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for month_data in birthday_data reversed %}
+                        {% for month_data in nepali_birthday_data %}
                             <tr>
-                                <td style="position: sticky; left: 0; background: #fff; z-index: 1;">{{ month_data.month }}</td>
+                                <td style="position: sticky; left: 0; background: #fff; z-index: 1;" 
+                                    class="{% if forloop.counter == today_nepali_date.month %}current-month{% endif %}">
+                                    {{ month_data.month }}
+                                    {% if forloop.counter == today_nepali_date.month %}
+                                        <i class="fas fa-arrow-right text-primary ms-1"></i>
+                                    {% endif %}
+                                </td>
                                 {% for day in month_data.days %}
-                                    <td class="text-center birthday-cell"
-                                        style="background-color: {% if day.count > 0 %}rgba(13, 110, 253, {{ day.count|floatformat:2 }}) {% else %}#fff{% endif %};"
+                                    <td class="text-center birthday-cell
+                                        {% if forloop.counter == today_nepali_date.day and forloop.parentloop.counter == today_nepali_date.month %}
+                                            today-highlight
+                                        {% endif %}
+                                        {% if day.count > 0 %}
+                                            has-birthday
+                                        {% endif %}"
+                                        style="background-color: 
+                                            {% if forloop.counter == today_nepali_date.day and forloop.parentloop.counter == today_nepali_date.month %}
+                                                #fff3cd; border: 2px solid #ffc107 !important;
+                                            {% elif day.count > 0 %}
+                                                rgba(13, 110, 253, {{ day.count|floatformat:2 }});
+                                            {% else %}
+                                                #fff;
+                                            {% endif %}"
                                         {% if day.count > 0 %}
                                             data-bs-toggle="popover"
                                             data-bs-trigger="hover"
@@ -30,8 +57,27 @@
                                             data-bs-html="true"
                                             data-bs-content="{% for emp in day.employees %}<div><strong>{{ emp.first_name }} {{ emp.last_name }}</strong><br>Dept: {{ emp.department }}<br>Position: {{ emp.position }}</div>{% if not forloop.last %}<hr>{% endif %}{% endfor %}"
                                         {% endif %}
-                                    
-                                        {% if day.count > 0 %}<span class="badge bg-light text-dark">{{ day.count }}</span>{% endif %}
+                                    >
+                                        {% if forloop.counter == today_nepali_date.day and forloop.parentloop.counter == today_nepali_date.month %}
+                                            <div class="today-marker">
+                                                <i class="fas fa-calendar-day text-warning"></i>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if day.count > 0 %}
+                                            <div class="birthday-badge">
+                                                <span class="badge bg-light text-dark">{{ day.count }}</span>
+                                                <i class="fas fa-birthday-cake text-primary ms-1" style="font-size: 0.8rem;"></i>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <!-- Special case: Today + Birthday -->
+                                        {% if forloop.counter == today_nepali_date.day and forloop.parentloop.counter == today_nepali_date.month and day.count > 0 %}
+                                            <div class="today-birthday-special">
+                                                <i class="fas fa-star text-warning"></i>
+                                                <small class="d-block text-warning fw-bold">Today!</small>
+                                            </div>
+                                        {% endif %}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -41,30 +87,181 @@
             </div>
         </div>
     </div>
+    
+    <!-- Legend -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Legend</h5>
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-box today-legend me-2"></div>
+                        <span><i class="fas fa-calendar-day text-warning me-1"></i>Today's Date</span>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-box birthday-legend me-2"></div>
+                        <span><i class="fas fa-birthday-cake text-primary me-1"></i>Has Birthdays</span>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <div class="d-flex align-items-center">
+                        <div class="legend-box today-birthday-legend me-2"></div>
+                        <span><i class="fas fa-star text-warning me-1"></i>Today + Birthday</span>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-dark me-2">2</span>
+                        <span>Number of birthdays</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Initialize popovers
     const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
     const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    
+    // Add pulse animation to today's date
+    const todayCell = document.querySelector('.today-highlight');
+    if (todayCell) {
+        setInterval(() => {
+            todayCell.classList.add('pulse-animation');
+            setTimeout(() => todayCell.classList.remove('pulse-animation'), 1000);
+        }, 3000);
+    }
+    
+    // Scroll to current month on page load
+    const currentMonth = document.querySelector('.current-month');
+    if (currentMonth) {
+        setTimeout(() => {
+            currentMonth.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 500);
+    }
 });
 </script>
 
 <style>
 .birthday-cell {
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: all 0.3s ease;
     cursor: pointer;
+    position: relative;
+    height: 60px;
+    vertical-align: middle;
 }
+
 .birthday-cell:hover {
     transform: scale(1.05);
     z-index: 2;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
+
+.today-highlight {
+    position: relative;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
+}
+
+.today-marker {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 0.8rem;
+}
+
+.birthday-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.today-birthday-special {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    text-align: center;
+}
+
+.current-month {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.pulse-animation {
+    animation: pulse 1s ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
 .popover {
     max-width: 300px;
 }
+
 .popover-body {
     font-size: 0.85rem;
     padding: 10px;
+}
+
+/* Legend styles */
+.legend-box {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.today-legend {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+}
+
+.birthday-legend {
+    background-color: rgba(13, 110, 253, 0.5);
+}
+
+.today-birthday-legend {
+    background: linear-gradient(45deg, #fff3cd 50%, rgba(13, 110, 253, 0.5) 50%);
+    border: 2px solid #ffc107;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .birthday-cell {
+        height: 50px;
+        font-size: 0.8rem;
+    }
+    
+    .today-marker, .today-birthday-special {
+        font-size: 0.7rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+}
+
+/* Print styles */
+@media print {
+    .today-highlight {
+        background-color: #fff3cd !important;
+        border: 2px solid #000 !important;
+    }
+    
+    .current-month {
+        background-color: #e9ecef !important;
+    }
 }
 </style>
 {% endblock %}

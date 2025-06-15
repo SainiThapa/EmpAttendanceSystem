@@ -9,6 +9,8 @@ from .models import Employee, Attendance, Department
 from calendar import monthrange
 from datetime import datetime, time
 import calendar
+import nepali_datetime
+import re
 
 def is_superuser(user):
     return user.is_superuser
@@ -208,28 +210,53 @@ def reset_attendance(request):
 
 @login_required
 def birthday_calendar(request):
-    employees = Employee.objects.filter(dob__isnull=False).select_related('department')
-    birthday_data = []
-    months = ['January', 'February', 'March', 'April', 'May', 'June', 
-              'July', 'August', 'September', 'October', 'November', 'December']
+    employees = Employee.objects.filter(dob_nepali__isnull=False).select_related('department')
     
-    for month in range(12):
+    # Nepali months in order
+    nepali_months = [
+        'Baisakh', 'Jestha', 'Asadh', 'Shrawan', 'Bhadra', 'Ashoj',
+        'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+    ]
+    
+    # Initialize Nepali birthday data: 12 months, each with 31 days
+    nepali_birthday_data = []
+    for month_idx, month_name in enumerate(nepali_months):
         month_data = {
-            'month': months[month],
+            'month': month_name,
             'days': [{'count': 0, 'employees': []} for _ in range(31)]
         }
-        for employee in employees:
-            if employee.dob.month == month + 1:
-                day = employee.dob.day - 1
-                month_data['days'][day]['count'] += 1
-                month_data['days'][day]['employees'].append({
-                    'first_name': employee.first_name,
-                    'last_name': employee.last_name,
-                    'department': employee.department.name if employee.department else 'Not assigned',
-                    'position': employee.position or 'Not provided'
-                })
-        birthday_data.append(month_data)
+        nepali_birthday_data.append(month_data)
     
+    # Parse nepali_dob (YYYY-MM-DD or YYYY/MM/DD) and map to calendar
+    dob_pattern = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+    for employee in employees:
+        if employee.dob_nepali:
+            match = dob_pattern.match(employee.dob_nepali)
+            if match:
+                year, month, day = map(int, match.groups())
+                # Validate month (1-12) and day (1-31)
+                if 1 <= month <= 12 and 1 <= day <= 31:
+                    month_idx = month - 1  # 0-based index for Baisakh=0
+                    day_idx = day - 1      # 0-based index for day
+                    nepali_birthday_data[month_idx]['days'][day_idx]['count'] += 1
+                    nepali_birthday_data[month_idx]['days'][day_idx]['employees'].append({
+                        'first_name': employee.first_name,
+                        'last_name': employee.last_name,
+                        'department': employee.department.name if employee.department else 'Not assigned',
+                        'position': employee.position or 'Not provided'
+                    })
+    
+    # Get today's Nepali date
+    today_nepali = nepali_datetime.date.today()
+    today_nepali_date = {
+        'year': today_nepali.year,
+        'month': today_nepali.month,
+        'day': today_nepali.day
+    }
+    mahina=nepali_months[(today_nepali.month)-1]
     return render(request, 'attendance/birthday_calendar.html', {
-        'birthday_data': birthday_data
+        'nepali_birthday_data': nepali_birthday_data,
+        'nepali_months': nepali_months,
+        'today_nepali_date': today_nepali_date,
+        'mahina':mahina
     })

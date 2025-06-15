@@ -1,0 +1,71 @@
+/* Nepali calendar table styling */
+.nepali-calendar {
+    font-size: 0.9rem;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Month header */
+.month-header {
+    width: 120px;
+    text-align: left;
+    vertical-align: middle;
+    background-color: #343a40;
+    color: white;
+}
+
+/* Day headers */
+.day-header {
+    width: 40px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Month cells */
+.month-cell {
+    text-align: left;
+    vertical-align: middle;
+    background-color: #f8f9fa;
+}
+
+/* Day cells */
+.day-cell {
+    text-align: center;
+    vertical-align: middle;
+    height: 50px;
+    cursor: default;
+    transition: background-color 0.3s ease;
+}
+
+/* Cells with birthdays */
+.day-cell.has-birthday {
+    background-color: #e7f1ff;
+    cursor: pointer;
+}
+
+.day-cell.has-birthday:hover {
+    background-color: #d0e4ff;
+}
+
+/* Birthday badge */
+.day-cell .badge {
+    font-size: 0.75rem;
+    margin-left: 5px;
+}
+
+/* Birthday icon */
+.day-cell .fa-birthday-cake {
+    font-size: 1.2rem;
+}
+
+/* Tooltip styling */
+.tooltip-inner {
+    max-width: 250px;
+    text-align: left;
+    background-color: #343a40;
+    padding: 10px;
+}
+
+.tooltip.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: #343a40;
+}
