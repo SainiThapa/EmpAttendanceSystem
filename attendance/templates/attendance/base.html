@@ -32,10 +32,18 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'birthday_calendar' %}">Birthdays</a>
                         </li>
+                        {% if not user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'employee_attendance' %}"><i class="fas fa-list-check me-1"></i>My Attendance</a>
+                        </li>
+                        {%endif%}
                         {% if user.is_superuser %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
-                            </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'attendance_calendar' %}"><i class="fas fa-calendar-check me-1"></i>Attendance Calendar</a>
+                        </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'admin_employee_list' %}">Employees</a>
                             </li>

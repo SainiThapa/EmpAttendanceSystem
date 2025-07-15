@@ -1,0 +1,68 @@
+{% extends 'attendance/base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Main container with Bootstrap styling -->
+<div class="container my-5">
+    <!-- Header with gradient text -->
+    <h2 class="mb-4 fw-bold text-center" style="background: linear-gradient(90deg, #0d6efd, #6610f2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        <i class="fas fa-list-check me-2"></i> My Attendance Records
+    </h2>
+
+    <!-- Bootstrap accordion for monthly records -->
+    <div class="accordion" id="attendanceAccordion">
+        {% for month_data in monthly_records %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading-{{ month_data.year }}-{{ month_data.month }}">
+                    <button class="accordion-button {% if forloop.first %}collapsed{% else %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ month_data.year }}-{{ month_data.month }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse-{{ month_data.year }}-{{ month_data.month }}">
+                        {{ month_data.month_name }} {{ month_data.year }}
+                    </button>
+                </h2>
+                <div id="collapse-{{ month_data.year }}-{{ month_data.month }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading-{{ month_data.year }}-{{ month_data.month }}" data-bs-parent="#attendanceAccordion">
+                    <div class="accordion-body">
+                        <!-- Responsive table for records in this month -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Check-in</th>
+                                        <th>Check-out</th>
+                                        <th>Hours and Minutes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in month_data.records %}
+                                        <tr>
+                                            <td>{{ record.date|date:"Y-m-d" }}</td>
+                                            <td>
+                                                {% if 'Present' in record.status %}
+                                                    <i class="fas fa-check-circle text-success me-1"></i> {{ record.status }}
+                                                {% elif 'Absent' in record.status %}
+                                                    <i class="fas fa-times-circle text-danger me-1"></i> {{ record.status }}
+                                                {% else %}
+                                                    {{ record.status }}
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ record.check_in|time:"H:i"|default:"N/A" }}</td>
+                                            <td>{{ record.check_out|time:"H:i"|default:"N/A" }}</td>
+                                            <td>{{ record.hours }} hours {{ record.minutes }} minutes</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-4 text-center">
+                    No attendance records available.
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

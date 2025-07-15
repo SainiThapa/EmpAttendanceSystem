@@ -7,9 +7,10 @@ from django.urls import reverse
 from django.db import models
 from .models import Employee, Attendance, Department
 from calendar import monthrange
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import calendar
 import nepali_datetime
+from nepali_datetime import date as nepali_date
 import re
 
 def is_superuser(user):
@@ -259,4 +260,157 @@ def birthday_calendar(request):
         'nepali_months': nepali_months,
         'today_nepali_date': today_nepali_date,
         'mahina':mahina
+    })
+
+# CHANGED: attendance_calendar view (admin-only, Gregorian dates, historical months)
+@login_required
+@user_passes_test(is_superuser)
+def attendance_calendar(request):
+    employees = Employee.objects.all().order_by('first_name', 'last_name')
+    
+    today = timezone.now().date()
+    current_year = today.year
+    current_month = today.month
+    current_day = today.day
+    
+    # Get selected month and year from GET parameters, default to current
+    selected_year = int(request.GET.get('year', current_year))
+    selected_month = int(request.GET.get('month', current_month))
+    
+    try:
+        datetime(selected_year, selected_month, 1)
+    except ValueError:
+        selected_year = current_year
+        selected_month = current_month
+    
+    _, days_in_month = monthrange(selected_year, selected_month)
+    month_name = calendar.month_name[selected_month]
+    
+    # Get available months with records, sorted descending
+    earliest_record = Attendance.objects.order_by('date').first()
+    available_months = []
+    if earliest_record:
+        start_date = earliest_record.date
+        current_date = datetime(current_year, current_month, 1)
+        year = start_date.year
+        month = start_date.month
+        while datetime(year, month, 1) <= current_date:
+            available_months.append({
+                'year': year,
+                'month': month,
+                'month_name': calendar.month_name[month]
+            })
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+        available_months.sort(key=lambda x: (x['year'], x['month']), reverse=True)
+    
+    attendance_data = []
+    for employee in employees:
+        employee_data = {
+            'employee': {'id': employee.id, 'name': f"{employee.first_name} {employee.last_name}"},
+            'days': [{'status': None, 'details': []} for _ in range(days_in_month)]
+        }
+        attendance_data.append(employee_data)
+    
+    attendance_records = Attendance.objects.filter(
+        date__year=selected_year,
+        date__month=selected_month
+    ).select_related('employee')
+    
+    for record in attendance_records:
+        employee_idx = next((i for i, data in enumerate(attendance_data) if data['employee']['id'] == record.employee.id), None)
+        if employee_idx is not None:
+            day_idx = record.date.day - 1
+            if 0 <= day_idx < days_in_month:
+                check_in = record.check_in.strftime('%H:%M') if record.check_in else 'N/A'
+                check_out = record.check_out.strftime('%H:%M') if record.check_out else 'N/A'
+                hours = record.hours_worked or 0
+                attendance_data[employee_idx]['days'][day_idx] = {
+                    'status': record.status,
+                    'details': [{
+                        'check_in': check_in,
+                        'check_out': check_out,
+                        'hours_worked': hours
+                    }]
+                }
+    
+    return render(request, 'attendance/attendance_calendar.html', {
+        'attendance_data': attendance_data,
+        'current_month_name': month_name,
+        'current_year': selected_year,
+        'selected_month': selected_month,  # Pass selected month
+        'selected_year': selected_year,   # Pass selected year
+        'today_date': {'year': current_year, 'month': current_month, 'day': current_day},
+        'days_in_month': range(1, days_in_month + 1),
+        'available_months': available_months
+    })
+
+# CHANGED: employee_attendance view to display hours and minutes
+@login_required
+def employee_attendance(request):
+    try:
+        employee = request.user.employee
+    except Employee.DoesNotExist:
+        messages.error(request, "You are not registered as an employee.")
+        return redirect('login')
+
+    # Fetch all attendance records for the employee
+    records = Attendance.objects.filter(employee=employee).order_by('-date')
+
+    # Group records by year and month
+    monthly_records = {}
+    for record in records:
+        year = record.date.year
+        month = record.date.month
+        month_key = (year, month)
+        if month_key not in monthly_records:
+            monthly_records[month_key] = {
+                'year': year,
+                'month': month,
+                'month_name': calendar.month_name[month],
+                'records': []
+            }
+        # Convert hours_worked to hours and minutes
+        hours_worked = record.hours_worked or 0
+        hours = int(hours_worked)
+        minutes = int((hours_worked % 1) * 60)
+        monthly_records[month_key]['records'].append({
+            'date': record.date,
+            'status': record.status,
+            'check_in': record.check_in,
+            'check_out': record.check_out,
+            'hours': hours,
+            'minutes': minutes
+        })
+
+    # Apply weekend logic
+    for month_key in monthly_records:
+        records = monthly_records[month_key]['records']
+        for i, record in enumerate(records):
+            date = record['date']
+            weekday = date.weekday()
+            if weekday in [5, 6]:  # Saturday or Sunday
+                friday_date = date - timedelta(days=1 if weekday == 5 else 2)
+                monday_date = date + timedelta(days=2 if weekday == 5 else 1)
+                friday_record = Attendance.objects.filter(employee=employee, date=friday_date).first()
+                monday_record = Attendance.objects.filter(employee=employee, date=monday_date).first()
+                friday_present = friday_record and friday_record.status == 'Present'
+                monday_present = monday_record and monday_record.status == 'Present'
+                if record['status'] != 'Present' and (friday_present or monday_present):
+                    record['status'] = 'Present (Weekend Rule)'
+                    record['hours'] = 8  # Assume 8 hours
+                    record['minutes'] = 0
+                elif record['status'] != 'Present' and not (friday_present or monday_present):
+                    record['status'] = 'Absent (Weekend Rule)'
+                    record['hours'] = 0
+                    record['minutes'] = 0
+
+    # Sort months in descending order (most recent first)
+    sorted_months = sorted(monthly_records.values(), key=lambda x: (x['year'], x['month']), reverse=True)
+
+    return render(request, 'attendance/employee_attendance.html', {
+        'employee': employee,
+        'monthly_records': sorted_months
     })

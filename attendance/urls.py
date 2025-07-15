@@ -14,4 +14,6 @@ urlpatterns = [
     path('employees/<int:employee_id>/', views.admin_employee_detail, name='admin_employee_detail'),
     path('bank-info/', views.admin_bank_info, name='admin_bank_info'),
     path('birthday-calendar/', views.birthday_calendar, name='birthday_calendar'),
+    path('attendance-calendar/', views.attendance_calendar, name='attendance_calendar'),
+    path('employee-attendance/', views.employee_attendance, name='employee_attendance'),
 ]

@@ -1,34 +1,48 @@
-/* Nepali calendar table styling */
+/* UNCHANGED: Nepali calendar table styling */
 .nepali-calendar {
     font-size: 0.9rem;
     border-collapse: separate;
     border-spacing: 0;
 }
 
-/* Month header */
-.month-header {
-    width: 120px;
+/* UNCHANGED: Employee header */
+.employee-header {
+    width: 150px;
     text-align: left;
     vertical-align: middle;
     background-color: #343a40;
     color: white;
 }
 
-/* Day headers */
+/* UNCHANGED: Day headers */
 .day-header {
     width: 40px;
     text-align: center;
     font-weight: bold;
 }
 
-/* Month cells */
+/* UNCHANGED: Today's header styling */
+.day-header.today-cell {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    font-weight: bold;
+}
+
+/* UNCHANGED: Employee cells */
+.employee-cell {
+    text-align: left;
+    vertical-align: middle;
+    background-color: #f8f9fa;
+}
+
+/* UNCHANGED: Month cells (for birthday calendar) */
 .month-cell {
     text-align: left;
     vertical-align: middle;
     background-color: #f8f9fa;
 }
 
-/* Day cells */
+/* UNCHANGED: Day cells base style */
 .day-cell {
     text-align: center;
     vertical-align: middle;
@@ -37,7 +51,41 @@
     transition: background-color 0.3s ease;
 }
 
-/* Cells with birthdays */
+/* UNCHANGED: Past date styling (gray background) */
+.past-date {
+    background-color: #e9ecef;
+}
+
+/* UNCHANGED: Today's date styling */
+.today-cell {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    font-weight: bold;
+}
+
+/* CHANGED: Attendance status styling for Present */
+.day-cell.status-present {
+    background-color: #63d57e;
+    cursor: pointer;
+    color: #e6ffeb;
+    font-weight: bold;
+}
+
+.day-cell.status-present:hover {
+    background-color: #c3e6cb;
+}
+
+/* UNCHANGED: Attendance status styling for Absent */
+.day-cell.status-absent {
+    background-color: #f8d7da;
+    cursor: pointer;
+}
+
+.day-cell.status-absent:hover {
+    background-color: #f5c6cb;
+}
+
+/* UNCHANGED: Birthday styling */
 .day-cell.has-birthday {
     background-color: #e7f1ff;
     cursor: pointer;
@@ -47,18 +95,41 @@
     background-color: #d0e4ff;
 }
 
-/* Birthday badge */
+/* UNCHANGED: Today's birthday styling */
+.today-cell.has-birthday {
+    background-color: #e7f1ff;
+    border: 2px solid #ffc107;
+}
+
+/* UNCHANGED: Attendance icons */
+.day-cell .fa-check-circle {
+    font-size: 1.2rem;
+    color: #28a745;
+}
+
+.day-cell .fa-times-circle {
+    font-size: 1.2rem;
+    color: #dc3545;
+}
+
+/* NEW: Status label styling */
+.day-cell .status-label {
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+/* UNCHANGED: Birthday badge */
 .day-cell .badge {
     font-size: 0.75rem;
     margin-left: 5px;
 }
 
-/* Birthday icon */
+/* UNCHANGED: Birthday icon */
 .day-cell .fa-birthday-cake {
     font-size: 1.2rem;
 }
 
-/* Tooltip styling */
+/* UNCHANGED: Tooltip styling */
 .tooltip-inner {
     max-width: 250px;
     text-align: left;
