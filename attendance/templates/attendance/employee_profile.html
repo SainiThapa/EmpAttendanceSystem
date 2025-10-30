@@ -11,7 +11,7 @@
             <div class="row align-items-center">
                 <div class="col-md-3 text-center mb-3">
                     <div class="card shadow-sm p-2">
-                    <img src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'attendance/img/default_image.jpg' %}{% endif %}" alt="Profile Picture" class="profile-img">
+                        <img src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'attendance/img/default_image.jpg' %}{% endif %}" alt="Profile Picture" class="profile-img">
                     </div>
                 </div>
                 <div class="col-md-9">
@@ -38,7 +38,96 @@
             </div>
         </div>
     </div>
-    <h3 class="mb-4 fw-bold text-primary text-center">Recent Attendance</h3>
+
+    <!-- Leave Statistics -->
+    <h3 class="mb-4 fw-bold text-primary text-center"><i class="fas fa-calendar-check me-2"></i>Leave Summary</h3>
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center border-primary">
+                <div class="card-body">
+                    <h4 class="text-primary mb-0">{{ leave_stats.total }}</h4>
+                    <small class="text-muted">Total Requests</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <h4 class="text-warning mb-0">{{ leave_stats.pending }}</h4>
+                    <small class="text-muted">Pending</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <h4 class="text-success mb-0">{{ leave_stats.approved }}</h4>
+                    <small class="text-muted">Approved</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <h4 class="text-danger mb-0">{{ leave_stats.rejected }}</h4>
+                    <small class="text-muted">Rejected</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave History Table -->
+    <h3 class="mb-4 fw-bold text-primary text-center"><i class="fas fa-history me-2"></i>Leave History</h3>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Title</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                            <th>Requested On</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in leave_requests %}
+                        <tr>
+                            <td><strong>{{ leave.title }}</strong></td>
+                            <td>{{ leave.start_date }}</td>
+                            <td>{{ leave.end_date }}</td>
+                            <td>
+                                {% if leave.status == 'Approved' %}
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>{{ leave.status }}</span>
+                                {% elif leave.status == 'Rejected' %}
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>{{ leave.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>{{ leave.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ leave.remarks|default:"-" }}</td>
+                            <td>{{ leave.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center">No leave requests found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if leave_requests %}
+        <div class="card-footer bg-light">
+            <a href="{% url 'leave_history' %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-eye me-1"></i>View All Leave History
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Attendance -->
+    <h3 class="mb-4 fw-bold text-primary text-center"><i class="fas fa-clipboard-check me-2"></i>Recent Attendance</h3>
     <div class="table-responsive">
         <table class="table table-striped table-bordered table-hover">
             <thead class="table-dark">

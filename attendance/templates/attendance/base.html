@@ -29,14 +29,18 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'birthday_calendar' %}">Birthdays</a>
-                        </li>
+                    
                         {% if not user.is_superuser %}
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'employee_attendance' %}"><i class="fas fa-list-check me-1"></i>My Attendance</a>
                         </li>
+                        
                         {%endif%}
+                        
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
@@ -53,20 +57,23 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'reset_attendance' %}">Reset Attendance</a>
                             </li>
-                        {% else %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                                <a class="nav-link" href="{% url 'birthday_calendar' %}">Birthdays</a>
                             </li>
+                            {% else %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'employee_profile' %}">Profile</a>
+                                <a class="nav-link" href="{% url 'leave_history' %}">View Leave History</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'record_attendance' %}">Record Attendance</a>
-                            </li>
-                        {% endif %}
+                        
+             
                         <li class="nav-item">
-                            <span class="nav-link text-light">Welcome, {{ user.employee.first_name }}</span>
+                            <a class="nav-link btn btn-link text-light" href="{% url 'employee_profile' %}">
+                            Welcome, {{ user.employee.first_name }}
+                            </a>
                         </li>
+                        
+                        {% endif %}
+                        
                         <li class="nav-item">
                             <form action="{% url 'logout' %}" method="post" class="d-inline">
                                 {% csrf_token %}

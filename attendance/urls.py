@@ -16,4 +16,9 @@ urlpatterns = [
     path('birthday-calendar/', views.birthday_calendar, name='birthday_calendar'),
     path('attendance-calendar/', views.attendance_calendar, name='attendance_calendar'),
     path('employee-attendance/', views.employee_attendance, name='employee_attendance'),
+# Leave Request URLs
+    path('leave-history/', views.leave_history, name='leave_history'),
+    path('request-leave/', views.request_leave, name='request_leave'),
+    path('admin-leave-requests/', views.admin_leave_requests, name='admin_leave_requests'),
+    path('admin-leave-requests/<int:leave_id>/<str:action>/', views.approve_reject_leave, name='approve_reject_leave'),
 ]

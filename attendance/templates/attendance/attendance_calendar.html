@@ -52,46 +52,50 @@
 
     /* Attendance status styling for Present */
     .day-cell.status-present {
-        background-color: #d4edda !important; /* Green background, high specificity */
+        background-color: #d4edda !important;
         cursor: pointer;
-        color: #28a745; /* Green text for visibility */
+        color: #155724;
         font-weight: bold;
     }
 
     .day-cell.status-present:hover {
-        background-color: #c3e6cb !important; /* Lighter green on hover */
+        background-color: #c3e6cb !important;
     }
 
-    /* Attendance status styling for Absent */
-    .day-cell.status-absent {
-        background-color: #f8d7da !important; /* Red background */
+    /* NEW: On Leave styling - Red background */
+    .day-cell.status-leave {
+        background-color: #f8d7da !important;
         cursor: pointer;
+        color: #721c24;
+        font-weight: bold;
     }
 
-    .day-cell.status-absent:hover {
-        background-color: #f5c6cb !important; /* Lighter red on hover */
+    .day-cell.status-leave:hover {
+        background-color: #f5c6cb !important;
     }
 
     /* Status label styling */
     .day-cell .status-label {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         vertical-align: middle;
+        font-weight: 600;
     }
 
     /* Attendance icons */
     .day-cell .fa-check-circle {
-        font-size: 1.2rem;
-        color: #28a745; /* Green icon */
+        font-size: 1.1rem;
+        color: #28a745;
     }
 
-    .day-cell .fa-times-circle {
-        font-size: 1.2rem;
-        color: #dc3545; /* Red icon */
+    /* NEW: Leave icon */
+    .day-cell .fa-calendar-times {
+        font-size: 1.1rem;
+        color: #dc3545;
     }
 
     /* Tooltip styling */
     .tooltip-inner {
-        max-width: 250px;
+        max-width: 300px;
         text-align: left;
         background-color: #343a40;
         padding: 10px;
@@ -99,6 +103,27 @@
 
     .tooltip.bs-tooltip-top .tooltip-arrow::before {
         border-top-color: #343a40;
+    }
+
+    /* Legend styling */
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 20px;
+        margin-bottom: 10px;
+    }
+
+    .legend-box {
+        width: 24px;
+        height: 24px;
+        border: 1px solid #ddd;
+        margin-right: 8px;
+        border-radius: 4px;
+    }
+
+    .legend-text {
+        font-size: 0.95rem;
+        font-weight: 500;
     }
 </style>
 
@@ -124,6 +149,27 @@
         </form>
     </div>
 
+    <!-- Legend -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>Legend</h6>
+            <div class="d-flex flex-wrap">
+                <div class="legend-item">
+                    <div class="legend-box" style="background-color: #d4edda;"></div>
+                    <span class="legend-text"><i class="fas fa-check-circle text-success me-1"></i>Present</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background-color: #f8d7da;"></div>
+                    <span class="legend-text"><i class="fas fa-calendar-times text-danger me-1"></i>On Leave</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background-color: #ffffff; border: 2px solid #ddd;"></div>
+                    <span class="legend-text">No Record</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Card for calendar -->
     <div class="card shadow-lg border-0">
         <div class="card-body p-4">
@@ -145,27 +191,28 @@
                                 <td class="employee-cell fw-bold">{{ employee_data.employee.name }}</td>
                                 <!-- Days of month -->
                                 {% for day in employee_data.days %}
-                                    {% with day_idx=forloop.counter %}
-                                    <!-- Determine cell class: status -->
-                                    <td class="day-cell {% if day.status %}status-{{ day.status|lower }}{% endif %}"
-                                        {% if day.status %}
+                                    {% if day.is_leave %}
+                                        <!-- Display On Leave (Red) -->
+                                        <td class="day-cell status-leave"
                                             data-bs-toggle="tooltip"
                                             data-bs-html="true"
-                                            title="{% for detail in day.details %}
-                                                <div>
-                                                    Check-in: {{ detail.check_in }}<br>
-                                                    Check-out: {{ detail.check_out }}<br>
-                                                    Hours: {{ detail.hours_worked }}
-                                                </div>
-                                            {% endfor %}"
-                                        {% endif %}>
-                                        {% if day.status == 'Present' %}
-                                            <i class="fas fa-check-circle text-success me-1"></i> <span class="status-label">P</span>
-                                        {% elif day.status == 'Absent' %}
-                                            <i class="fas fa-times-circle text-danger"></i>
-                                        {% endif %}
-                                    </td>
-                                    {% endwith %}
+                                            title="<strong>On Leave</strong><br>{{ day.details.0.leave_title }}<br><small>{{ day.details.0.leave_remarks }}</small>">
+                                            <i class="fas fa-calendar-times"></i>
+                                            <span class="status-label d-block">On Leave</span>
+                                        </td>
+                                    {% elif day.status == 'Present' %}
+                                        <!-- Display Present (Green) -->
+                                        <td class="day-cell status-present"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-html="true"
+                                            title="<strong>Present</strong><br>Check-in: {{ day.details.0.check_in }}<br>Check-out: {{ day.details.0.check_out }}<br>Hours: {{ day.details.0.hours_worked|floatformat:2 }}">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span class="status-label d-block">Present</span>
+                                        </td>
+                                    {% else %}
+                                        <!-- Empty cell for no record -->
+                                        <td class="day-cell"></td>
+                                    {% endif %}
                                 {% endfor %}
                             </tr>
                         {% empty %}

@@ -79,3 +79,20 @@ class AbsentEmployeeManager:
                     date=target_date,
                     status='Absent'
                 )
+
+class LeaveRequest(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="leave_requests")
+    title = models.CharField(max_length=100)
+    remarks = models.TextField(blank=True, null=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.employee} ({self.title}) [{self.start_date} to {self.end_date}] - {self.status}"

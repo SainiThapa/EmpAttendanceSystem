@@ -5,12 +5,13 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from django.urls import reverse
 from django.db import models
-from .models import Employee, Attendance, Department
+from .models import Employee, Attendance, Department, LeaveRequest
 from calendar import monthrange
 from datetime import datetime, time, timedelta
 import calendar
 import nepali_datetime
 from nepali_datetime import date as nepali_date
+
 import re
 
 def is_superuser(user):
@@ -50,10 +51,23 @@ def dashboard(request):
     attendance = Attendance.objects.filter(employee=employee, date=today).first()
     history = Attendance.objects.filter(employee=employee).order_by('-date')[:30]
 
+    # NEW: Add leave statistics
+    leave_stats = {
+        'pending': LeaveRequest.objects.filter(employee=employee, status='Pending').count(),
+        'approved': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
+        'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
+        'used': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
+    }
+    
+    # Get recent leave requests for dashboard
+    recent_leaves = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')[:5]
+
     return render(request, 'attendance/dashboard.html', {
         'employee': employee,
         'today_attendance': attendance,
-        'history': history
+        'history': history,
+        'leave_stats': leave_stats,
+        'recent_leaves': recent_leaves,
     })
 
 @login_required
@@ -102,11 +116,23 @@ def employee_profile(request):
         return redirect('login')
     
     attendance_records = Attendance.objects.filter(employee=employee).order_by('-date')[:30]
+    
+    # NEW: Add leave history
+    leave_requests = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')[:10]
+    leave_stats = {
+        'total': LeaveRequest.objects.filter(employee=employee).count(),
+        'pending': LeaveRequest.objects.filter(employee=employee, status='Pending').count(),
+        'approved': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
+        'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
+    }
+    
     return render(request, 'attendance/employee_profile.html', {
         'employee': employee,
-        'attendance_records': attendance_records
+        'attendance_records': attendance_records,
+        'leave_requests': leave_requests,
+        'leave_stats': leave_stats,
     })
-
+ 
 @login_required
 @user_passes_test(is_superuser)
 def admin_employee_list(request):
@@ -120,9 +146,21 @@ def admin_employee_list(request):
 def admin_employee_detail(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     attendance_records = Attendance.objects.filter(employee=employee).order_by('-date')[:30]
+    
+    # NEW: Add leave history
+    leave_requests = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')[:10]
+    leave_stats = {
+        'total': LeaveRequest.objects.filter(employee=employee).count(),
+        'pending': LeaveRequest.objects.filter(employee=employee, status='Pending').count(),
+        'approved': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
+        'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
+    }
+    
     return render(request, 'attendance/admin_employee_detail.html', {
         'employee': employee,
-        'attendance_records': attendance_records
+        'attendance_records': attendance_records,
+        'leave_requests': leave_requests,
+        'leave_stats': leave_stats,
     })
 
 @login_required
@@ -136,6 +174,7 @@ def admin_bank_info(request):
 @login_required
 @user_passes_test(is_superuser)
 def admin_dashboard(request):
+    from .models import LeaveRequest  # ensure import if not present
     employees = Employee.objects.all()
     today = timezone.now().date()
     current_year = today.year
@@ -190,6 +229,9 @@ def admin_dashboard(request):
 
     attendance_records = Attendance.objects.filter(date=today).order_by('-date')
 
+    # Get latest 10 leave requests
+    recent_leave_requests = LeaveRequest.objects.select_related('employee').order_by('-created_at')[:10]
+
     return render(request, 'attendance/admin_dashboard.html', {
         'employees': employees,
         'attendance_records': attendance_records,
@@ -197,7 +239,8 @@ def admin_dashboard(request):
         'attendance_summary': attendance_summary,
         'current_month': calendar.month_name[current_month],
         'current_year': current_year,
-        'half_day_records': half_day_records
+        'half_day_records': half_day_records,
+        'recent_leave_requests': recent_leave_requests,  # <-- NEW
     })
 
 @login_required
@@ -273,7 +316,6 @@ def attendance_calendar(request):
     current_month = today.month
     current_day = today.day
     
-    # Get selected month and year from GET parameters, default to current
     selected_year = int(request.GET.get('year', current_year))
     selected_month = int(request.GET.get('month', current_month))
     
@@ -286,7 +328,6 @@ def attendance_calendar(request):
     _, days_in_month = monthrange(selected_year, selected_month)
     month_name = calendar.month_name[selected_month]
     
-    # Get available months with records, sorted descending
     earliest_record = Attendance.objects.order_by('date').first()
     available_months = []
     if earliest_record:
@@ -310,10 +351,11 @@ def attendance_calendar(request):
     for employee in employees:
         employee_data = {
             'employee': {'id': employee.id, 'name': f"{employee.first_name} {employee.last_name}"},
-            'days': [{'status': None, 'details': []} for _ in range(days_in_month)]
+            'days': [{'status': None, 'details': [], 'is_leave': False} for _ in range(days_in_month)]
         }
         attendance_data.append(employee_data)
     
+    # Get attendance records
     attendance_records = Attendance.objects.filter(
         date__year=selected_year,
         date__month=selected_month
@@ -333,15 +375,49 @@ def attendance_calendar(request):
                         'check_in': check_in,
                         'check_out': check_out,
                         'hours_worked': hours
-                    }]
+                    }],
+                    'is_leave': False
                 }
+    
+    # NEW: Mark approved leave days
+    first_day = datetime(selected_year, selected_month, 1).date()
+    last_day = datetime(selected_year, selected_month, days_in_month).date()
+    
+    approved_leaves = LeaveRequest.objects.filter(
+        status='Approved',
+        start_date__lte=last_day,
+        end_date__gte=first_day
+    ).select_related('employee')
+    
+    for leave in approved_leaves:
+        employee_idx = next((i for i, data in enumerate(attendance_data) if data['employee']['id'] == leave.employee.id), None)
+        if employee_idx is not None:
+            # Calculate leave days within the month
+            leave_start = max(leave.start_date, first_day)
+            leave_end = min(leave.end_date, last_day)
+            
+            current_date = leave_start
+            while current_date <= leave_end:
+                day_idx = current_date.day - 1
+                if 0 <= day_idx < days_in_month:
+                    # Only mark as leave if no attendance record exists
+                    if not attendance_data[employee_idx]['days'][day_idx]['status']:
+                        attendance_data[employee_idx]['days'][day_idx] = {
+                            'status': 'Leave',
+                            'details': [{
+                                'leave_title': leave.title,
+                                'leave_remarks': leave.remarks or 'No remarks'
+                            }],
+                            'is_leave': True
+                        }
+                current_date += timedelta(days=1)
     
     return render(request, 'attendance/attendance_calendar.html', {
         'attendance_data': attendance_data,
         'current_month_name': month_name,
         'current_year': selected_year,
-        'selected_month': selected_month,  # Pass selected month
-        'selected_year': selected_year,   # Pass selected year
+        'selected_month': selected_month,
+        'selected_year': selected_year,
         'today_date': {'year': current_year, 'month': current_month, 'day': current_day},
         'days_in_month': range(1, days_in_month + 1),
         'available_months': available_months
@@ -349,6 +425,165 @@ def attendance_calendar(request):
 
 # CHANGED: employee_attendance view to display hours and minutes
 @login_required
+@user_passes_test(is_superuser)
+def attendance_calendar(request):
+    employees = Employee.objects.all().order_by('first_name', 'last_name')
+    
+    today = timezone.now().date()
+    current_year = today.year
+    current_month = today.month
+    current_day = today.day
+    
+    selected_year = int(request.GET.get('year', current_year))
+    selected_month = int(request.GET.get('month', current_month))
+    
+    try:
+        datetime(selected_year, selected_month, 1)
+    except ValueError:
+        selected_year = current_year
+        selected_month = current_month
+    
+    _, days_in_month = monthrange(selected_year, selected_month)
+    month_name = calendar.month_name[selected_month]
+    
+    earliest_record = Attendance.objects.order_by('date').first()
+    available_months = []
+    if earliest_record:
+        start_date = earliest_record.date
+        current_date = datetime(current_year, current_month, 1)
+        year = start_date.year
+        month = start_date.month
+        while datetime(year, month, 1) <= current_date:
+            available_months.append({
+                'year': year,
+                'month': month,
+                'month_name': calendar.month_name[month]
+            })
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+        available_months.sort(key=lambda x: (x['year'], x['month']), reverse=True)
+    
+    attendance_data = []
+    for employee in employees:
+        employee_data = {
+            'employee': {'id': employee.id, 'name': f"{employee.first_name} {employee.last_name}"},
+            'days': [{'status': None, 'details': [], 'is_leave': False} for _ in range(days_in_month)]
+        }
+        attendance_data.append(employee_data)
+    
+    # Get attendance records
+    attendance_records = Attendance.objects.filter(
+        date__year=selected_year,
+        date__month=selected_month
+    ).select_related('employee')
+    
+    for record in attendance_records:
+        employee_idx = next((i for i, data in enumerate(attendance_data) if data['employee']['id'] == record.employee.id), None)
+        if employee_idx is not None:
+            day_idx = record.date.day - 1
+            if 0 <= day_idx < days_in_month:
+                check_in = record.check_in.strftime('%H:%M') if record.check_in else 'N/A'
+                check_out = record.check_out.strftime('%H:%M') if record.check_out else 'N/A'
+                hours = record.hours_worked or 0
+                attendance_data[employee_idx]['days'][day_idx] = {
+                    'status': record.status,
+                    'details': [{
+                        'check_in': check_in,
+                        'check_out': check_out,
+                        'hours_worked': hours
+                    }],
+                    'is_leave': False
+                }
+    
+    # NEW: Mark ONLY approved leave days (only if no Present attendance exists)
+    first_day = datetime(selected_year, selected_month, 1).date()
+    last_day = datetime(selected_year, selected_month, days_in_month).date()
+    
+    approved_leaves = LeaveRequest.objects.filter(
+        status='Approved',
+        start_date__lte=last_day,
+        end_date__gte=first_day
+    ).select_related('employee')
+    
+    for leave in approved_leaves:
+        employee_idx = next((i for i, data in enumerate(attendance_data) if data['employee']['id'] == leave.employee.id), None)
+        if employee_idx is not None:
+            # Calculate leave days within the month
+            leave_start = max(leave.start_date, first_day)
+            leave_end = min(leave.end_date, last_day)
+            
+            current_date = leave_start
+            while current_date <= leave_end:
+                day_idx = current_date.day - 1
+                if 0 <= day_idx < days_in_month:
+                    # Only mark as leave if no Present attendance record exists
+                    if attendance_data[employee_idx]['days'][day_idx]['status'] != 'Present':
+                        attendance_data[employee_idx]['days'][day_idx] = {
+                            'status': None,  # Don't set status, use is_leave flag instead
+                            'details': [{
+                                'leave_title': leave.title,
+                                'leave_remarks': leave.remarks or 'No remarks'
+                            }],
+                            'is_leave': True
+                        }
+                current_date += timedelta(days=1)
+    
+    return render(request, 'attendance/attendance_calendar.html', {
+        'attendance_data': attendance_data,
+        'current_month_name': month_name,
+        'current_year': selected_year,
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+        'today_date': {'year': current_year, 'month': current_month, 'day': current_day},
+        'days_in_month': range(1, days_in_month + 1),
+        'available_months': available_months
+    })
+
+# Leave Request View
+
+@login_required
+def leave_history(request):
+    employee = request.user.employee
+    leaves = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')
+    return render(request, 'attendance/leave_history.html', {
+        'leaves': leaves
+    })
+
+@login_required
+def request_leave(request):
+    employee = request.user.employee
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        remarks = request.POST.get('remarks')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        if not (title and start_date and end_date):
+            messages.error(request, 'Title, start date, and end date are required.')
+        else:
+            LeaveRequest.objects.create(
+                employee=employee,
+                title=title,
+                remarks=remarks,
+                start_date=start_date,
+                end_date=end_date,
+                status='Pending'
+            )
+            messages.success(request, 'Leave request submitted successfully.')
+            return redirect('leave_history')
+    return render(request, 'attendance/request_leave.html')
+
+# Admin Leave Management Views
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def admin_leave_requests(request):
+    leave_requests = LeaveRequest.objects.all().order_by('-created_at')
+    return render(request, 'attendance/admin_leave_requests.html', {
+        'leave_requests': leave_requests
+    })
+login_required
 def employee_attendance(request):
     try:
         employee = request.user.employee
@@ -414,3 +649,15 @@ def employee_attendance(request):
         'employee': employee,
         'monthly_records': sorted_months
     })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def approve_reject_leave(request, leave_id, action):
+    leave = get_object_or_404(LeaveRequest, id=leave_id)
+    if action == 'approve':
+        leave.status = 'Approved'
+    elif action == 'reject':
+        leave.status = 'Rejected'
+    leave.save()
+    messages.success(request, f'Leave request {action}d.')
+    return redirect('admin_leave_requests')

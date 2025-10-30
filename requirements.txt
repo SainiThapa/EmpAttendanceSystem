@@ -1,5 +1,5 @@
 asgiref==3.8.1
-Django==5.2.3
+Django
 nepali-date-converter==0.0.1
 nepali-datetime==1.0.8.4
 pillow==11.2.1

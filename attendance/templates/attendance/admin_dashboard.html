@@ -4,6 +4,61 @@
 <div class="container">
     <h2 class="mb-4 fw-bold text-primary">Admin Dashboard</h2>
 
+    <!-- LEAVE MANAGEMENT SECTION -->
+    <h3 class="mb-3 fw-bold">Employee Leave Requests</h3>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <a href="{% url 'admin_leave_requests' %}" class="btn btn-outline-primary mb-3">View All Leave Requests</a>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Title</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                            <th>Requested On</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in recent_leave_requests %}
+                        <tr>
+                            <td>{{ leave.employee }}</td>
+                            <td>{{ leave.title }}</td>
+                            <td>{{ leave.start_date }}</td>
+                            <td>{{ leave.end_date }}</td>
+                            <td>
+                                {% if leave.status == 'Approved' %}
+                                    <span class="badge bg-success">{{ leave.status }}</span>
+                                {% elif leave.status == 'Rejected' %}
+                                    <span class="badge bg-danger">{{ leave.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">{{ leave.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ leave.remarks|default:"-" }}</td>
+                            <td>{{ leave.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                {% if leave.status == 'Pending' %}
+                                <a href="{% url 'approve_reject_leave' leave.id 'approve' %}" class="btn btn-success btn-sm">Approve</a>
+                                <a href="{% url 'approve_reject_leave' leave.id 'reject' %}" class="btn btn-danger btn-sm">Reject</a>
+                                {% else %}
+                                <span class="text-muted">No actions</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center">No recent leave requests found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <h3 class="mb-3 fw-bold">Monthly Attendance Summary - {{ current_month }} {{ current_year }}</h3>
     <div class="card shadow-sm mb-4">
         <div class="card-body">
@@ -28,7 +83,7 @@
                             <td>{{ summary.absent_days }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="3" class="text-center">No employees found.</td></tr>
+                        <tr><td colspan="4" class="text-center">No employees found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -100,7 +155,6 @@
             </tbody>
         </table>
     </div>
-
     <a href="{% url 'reset_attendance' %}" class="btn btn-danger mt-3">Reset All Attendance Records</a>
 </div>
 {% endblock %}
