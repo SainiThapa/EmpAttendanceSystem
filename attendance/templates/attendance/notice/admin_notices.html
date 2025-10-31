@@ -1,0 +1,128 @@
+{% extends 'attendance/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="fas fa-bullhorn me-2"></i>Notice Management
+        </h2>
+        <a href="{% url 'create_notice' %}" class="btn btn-success">
+            <i class="fas fa-plus-circle me-1"></i>Create New Notice
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success bg-opacity-10 border-success">
+                <div class="card-body text-center">
+                    <h3 class="text-success mb-0">{{ total_notices }}</h3>
+                    <small class="text-muted">Total Notices</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info bg-opacity-10 border-info">
+                <div class="card-body text-center">
+                    <h3 class="text-info mb-0">{{ active_count }}</h3>
+                    <small class="text-muted">Active Notices</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10 border-warning">
+                <div class="card-body text-center">
+                    <h3 class="text-warning mb-0">{{ inactive_count }}</h3>
+                    <small class="text-muted">Inactive Notices</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger bg-opacity-10 border-danger">
+                <div class="card-body text-center">
+                    <h3 class="text-danger mb-0">{{ urgent_count }}</h3>
+                    <small class="text-muted">Urgent Notices</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notices Table -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Title</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Published</th>
+                            <th>Created By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notice in notices %}
+                        <tr>
+                            <td>
+                                <strong>{{ notice.title }}</strong>
+                                {% if notice.is_new %}
+                                    <span class="badge bg-success ms-1">NEW</span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">{{ notice.description|truncatewords:15 }}</small>
+                            </td>
+                            <td>
+                                {% if notice.priority == 'urgent' %}
+                                    <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Urgent</span>
+                                {% elif notice.priority == 'high' %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-circle me-1"></i>High</span>
+                                {% elif notice.priority == 'medium' %}
+                                    <span class="badge bg-info"><i class="fas fa-info-circle me-1"></i>Medium</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="fas fa-circle me-1"></i>Low</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if notice.is_active %}
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="fas fa-times-circle me-1"></i>Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ notice.published_at|date:"M d, Y H:i" }}</small></td>
+                            <td><small>{{ notice.created_by.username|default:"System" }}</small></td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'edit_notice' notice.id %}" class="btn btn-outline-primary" title="Edit"><i class="fas fa-edit"></i></a>
+                                    <a href="{% url 'toggle_notice' notice.id %}" 
+                                       class="btn btn-outline-{% if notice.is_active %}warning{% else %}success{% endif %}"
+                                       title="{% if notice.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                        <i class="fas fa-toggle-{% if notice.is_active %}on{% else %}off{% endif %}"></i>
+                                    </a>
+                                    <a href="{% url 'delete_notice' notice.id %}" class="btn btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No notices found. Create your first notice!</p>
+                                <a href="{% url 'create_notice' %}" class="btn btn-primary"><i class="fas fa-plus-circle me-1"></i>Create Notice</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table td { vertical-align: middle; }
+    .btn-group-sm > .btn { padding: .25rem .5rem; }
+</style>
+{% endblock %}

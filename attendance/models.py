@@ -96,3 +96,31 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"{self.employee} ({self.title}) [{self.start_date} to {self.end_date}] - {self.status}"
+    
+
+class Notice(models.Model):
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(default=timezone.now)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='notices_created')
+    
+    class Meta:
+        ordering = ['-published_at', '-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {'Active' if self.is_active else 'Inactive'}"
+    
+    @property
+    def is_new(self):
+        """Check if notice was published within last 24 hours"""
+        return (timezone.now() - self.published_at).days < 1

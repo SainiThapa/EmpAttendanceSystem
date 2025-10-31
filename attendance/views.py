@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from django.urls import reverse
 from django.db import models
-from .models import Employee, Attendance, Department, LeaveRequest
+from .models import Employee, Attendance, Department, LeaveRequest, Notice
 from calendar import monthrange
 from datetime import datetime, time, timedelta
 import calendar
@@ -58,9 +58,9 @@ def dashboard(request):
         'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
         'used': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
     }
-    
-    # Get recent leave requests for dashboard
+    # Get recent leave  for dashboard
     recent_leaves = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')[:5]
+    active_notices = Notice.objects.filter(is_active=True).order_by('-published_at')
 
     return render(request, 'attendance/dashboard.html', {
         'employee': employee,
@@ -68,6 +68,7 @@ def dashboard(request):
         'history': history,
         'leave_stats': leave_stats,
         'recent_leaves': recent_leaves,
+        'active_notices': active_notices,   # <-- add this
     })
 
 @login_required
@@ -661,3 +662,103 @@ def approve_reject_leave(request, leave_id, action):
     leave.save()
     messages.success(request, f'Leave request {action}d.')
     return redirect('admin_leave_requests')
+
+
+
+@login_required
+@user_passes_test(is_superuser)
+def admin_notices(request):
+    """Display all notices for admin management"""
+    notices = Notice.objects.all().order_by('-published_at')
+
+    # Compute stats in Python, not in template
+    total_notices = notices.count()
+    active_count = notices.filter(is_active=True).count()
+    inactive_count = notices.filter(is_active=False).count()
+    urgent_count = notices.filter(priority='urgent').count()
+
+    return render(request, 'attendance/notice/admin_notices.html', {
+        'notices': notices,
+        'total_notices': total_notices,
+        'active_count': active_count,
+        'inactive_count': inactive_count,
+        'urgent_count': urgent_count,
+    })
+
+@login_required
+@user_passes_test(is_superuser)
+def create_notice(request):
+    """Create a new notice"""
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        priority = request.POST.get('priority', 'medium')
+        is_active = request.POST.get('is_active') == 'on'
+        
+        if not title or not description:
+            messages.error(request, 'Title and description are required.')
+            return redirect('create_notice')
+        
+        Notice.objects.create(
+            title=title,
+            description=description,
+            priority=priority,
+            is_active=is_active,
+            created_by=request.user
+        )
+        messages.success(request, 'Notice created successfully.')
+        return redirect('admin_notices')
+    
+    return render(request, 'attendance/notice/create_notice.html')
+
+@login_required
+@user_passes_test(is_superuser)
+def edit_notice(request, notice_id):
+    """Edit an existing notice"""
+    notice = get_object_or_404(Notice, id=notice_id)
+    
+    if request.method == 'POST':
+        notice.title = request.POST.get('title')
+        notice.description = request.POST.get('description')
+        notice.priority = request.POST.get('priority', 'medium')
+        notice.is_active = request.POST.get('is_active') == 'on'
+        
+        if not notice.title or not notice.description:
+            messages.error(request, 'Title and description are required.')
+            return redirect('edit_notice', notice_id=notice_id)
+        
+        notice.save()
+        messages.success(request, 'Notice updated successfully.')
+        return redirect('admin_notices')
+    
+    return render(request, 'attendance/notice/edit_notice.html', {
+        'notice': notice
+    })
+
+@login_required
+@user_passes_test(is_superuser)
+def toggle_notice(request, notice_id):
+    """Toggle notice active status"""
+    notice = get_object_or_404(Notice, id=notice_id)
+    notice.is_active = not notice.is_active
+    notice.save()
+    
+    status = "activated" if notice.is_active else "deactivated"
+    messages.success(request, f'Notice "{notice.title}" has been {status}.')
+    return redirect('admin_notices')
+
+@login_required
+@user_passes_test(is_superuser)
+def delete_notice(request, notice_id):
+    """Delete a notice"""
+    notice = get_object_or_404(Notice, id=notice_id)
+    
+    if request.method == 'POST':
+        notice_title = notice.title
+        notice.delete()
+        messages.success(request, f'Notice "{notice_title}" has been deleted.')
+        return redirect('admin_notices')
+    
+    return render(request, 'attendance/notice/delete_notice.html', {
+        'notice': notice
+    })

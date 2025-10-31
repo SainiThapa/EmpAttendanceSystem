@@ -21,4 +21,12 @@ urlpatterns = [
     path('request-leave/', views.request_leave, name='request_leave'),
     path('admin-leave-requests/', views.admin_leave_requests, name='admin_leave_requests'),
     path('admin-leave-requests/<int:leave_id>/<str:action>/', views.approve_reject_leave, name='approve_reject_leave'),
+
+# Notice Management URLs
+    path('admin-notices/', views.admin_notices, name='admin_notices'),
+    path('create-notice/', views.create_notice, name='create_notice'),
+    path('edit-notice/<int:notice_id>/', views.edit_notice, name='edit_notice'),
+    path('toggle-notice/<int:notice_id>/', views.toggle_notice, name='toggle_notice'),
+    path('delete-notice/<int:notice_id>/', views.delete_notice, name='delete_notice'),
+
 ]

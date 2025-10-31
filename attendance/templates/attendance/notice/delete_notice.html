@@ -1,0 +1,21 @@
+{% extends 'attendance/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4 fw-bold text-danger"><i class="fas fa-trash me-2"></i>Delete Notice</h2>
+
+    <div class="card shadow-sm border-danger">
+        <div class="card-body">
+            <p>Are you sure you want to <strong>permanently delete</strong> the notice:</p>
+            <h5 class="text-danger">{{ notice.title }}</h5>
+            <p class="text-muted">{{ notice.description|truncatewords:30 }}</p>
+
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Yes, Delete</button>
+            </form>
+            <a href="{% url 'admin_notices' %}" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i>Cancel</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
