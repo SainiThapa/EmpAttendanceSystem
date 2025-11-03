@@ -25,6 +25,9 @@ class Employee(models.Model):
     bank_account_holder_name = models.CharField(max_length=100, blank=True, null=True)
     photo = models.ImageField(upload_to='employee_photos/', blank=True, null=True)
 
+    monthly_salary = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Monthly base salary in NPR")
 
     def save(self, *args, **kwargs):
         if self.dob and not self.dob_nepali:
@@ -42,10 +45,14 @@ class Attendance(models.Model):
     hours_worked = models.FloatField(null=True, blank=True)
     date = models.DateField(default=timezone.now)
     comments = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=10, default='Present', choices=[
-        ('Present', 'Present'),
-        ('Absent', 'Absent')
-    ])
+    status = models.CharField(
+        max_length=15,
+        default='Present',
+        choices=[
+            ('Present', 'Present'),
+            ('Absent', 'Absent'),
+            ('Approved Leave', 'Approved Leave'),
+        ])
 
     def save(self, *args, **kwargs):
         if self.check_out and self.check_in:

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib import messages
@@ -9,6 +10,7 @@ from .models import Employee, Attendance, Department, LeaveRequest, Notice
 from calendar import monthrange
 from datetime import datetime, time, timedelta
 import calendar
+from django.db.models import Q
 import nepali_datetime
 from nepali_datetime import date as nepali_date
 
@@ -43,7 +45,7 @@ def dashboard(request):
     )
     for attendance in incomplete_attendances:
         attendance.check_out = timezone.make_aware(
-            datetime.combine(attendance.date, time(18, 0)),
+            datetime.combine(attendance.date, time(17, 0)),
             timezone.get_current_timezone()
         )
         attendance.save()
@@ -62,7 +64,7 @@ def dashboard(request):
     recent_leaves = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')[:5]
     active_notices = Notice.objects.filter(is_active=True).order_by('-published_at')
 
-    return render(request, 'attendance/dashboard.html', {
+    return render(request, 'attendance/employee/dashboard.html', {
         'employee': employee,
         'today_attendance': attendance,
         'history': history,
@@ -103,7 +105,7 @@ def record_attendance(request):
             messages.warning(request, "Attendance already completed for today.")
         return redirect('dashboard')
 
-    return render(request, 'attendance/record_attendance.html', {
+    return render(request, 'attendance/employee/record_attendance.html', {
         'employee': employee,
         'is_checked_in': is_checked_in
     })
@@ -127,7 +129,7 @@ def employee_profile(request):
         'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
     }
     
-    return render(request, 'attendance/employee_profile.html', {
+    return render(request, 'attendance/employee/employee_profile.html', {
         'employee': employee,
         'attendance_records': attendance_records,
         'leave_requests': leave_requests,
@@ -138,7 +140,7 @@ def employee_profile(request):
 @user_passes_test(is_superuser)
 def admin_employee_list(request):
     employees = Employee.objects.all()
-    return render(request, 'attendance/admin_employee_list.html', {
+    return render(request, 'attendance/admin/admin_employee_list.html', {
         'employees': employees
     })
 
@@ -157,7 +159,7 @@ def admin_employee_detail(request, employee_id):
         'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
     }
     
-    return render(request, 'attendance/admin_employee_detail.html', {
+    return render(request, 'attendance/admin/admin_employee_detail.html', {
         'employee': employee,
         'attendance_records': attendance_records,
         'leave_requests': leave_requests,
@@ -168,7 +170,7 @@ def admin_employee_detail(request, employee_id):
 @user_passes_test(is_superuser)
 def admin_bank_info(request):
     employees = Employee.objects.filter(bank_account_number__isnull=False)
-    return render(request, 'attendance/admin_bank_info.html', {
+    return render(request, 'attendance/admin/admin_bank_info.html', {
         'employees': employees
     })
 
@@ -187,7 +189,7 @@ def admin_dashboard(request):
     )
     for attendance in incomplete_attendances:
         attendance.check_out = timezone.make_aware(
-            datetime.combine(attendance.date, time(18, 0)),
+            datetime.combine(attendance.date, time(17, 0)),
             timezone.get_current_timezone()
         )
         attendance.save()
@@ -233,7 +235,7 @@ def admin_dashboard(request):
     # Get latest 10 leave requests
     recent_leave_requests = LeaveRequest.objects.select_related('employee').order_by('-created_at')[:10]
 
-    return render(request, 'attendance/admin_dashboard.html', {
+    return render(request, 'attendance/admin/admin_dashboard.html', {
         'employees': employees,
         'attendance_records': attendance_records,
         'working_days': working_days,
@@ -251,7 +253,7 @@ def reset_attendance(request):
         Attendance.objects.all().delete()
         messages.success(request, "Attendance records have been reset successfully.")
         return redirect('admin_dashboard')
-    return render(request, 'attendance/reset_attendance.html')
+    return render(request, 'attendance/admin/reset_attendance.html')
 
 @login_required
 def birthday_calendar(request):
@@ -413,7 +415,7 @@ def attendance_calendar(request):
                         }
                 current_date += timedelta(days=1)
     
-    return render(request, 'attendance/attendance_calendar.html', {
+    return render(request, 'attendance/admin/attendance_calendar.html', {
         'attendance_data': attendance_data,
         'current_month_name': month_name,
         'current_year': selected_year,
@@ -531,7 +533,7 @@ def attendance_calendar(request):
                         }
                 current_date += timedelta(days=1)
     
-    return render(request, 'attendance/attendance_calendar.html', {
+    return render(request, 'attendance/admin/attendance_calendar.html', {
         'attendance_data': attendance_data,
         'current_month_name': month_name,
         'current_year': selected_year,
@@ -646,7 +648,7 @@ def employee_attendance(request):
     # Sort months in descending order (most recent first)
     sorted_months = sorted(monthly_records.values(), key=lambda x: (x['year'], x['month']), reverse=True)
 
-    return render(request, 'attendance/employee_attendance.html', {
+    return render(request, 'attendance/employee/employee_attendance.html', {
         'employee': employee,
         'monthly_records': sorted_months
     })
@@ -761,4 +763,124 @@ def delete_notice(request, notice_id):
     
     return render(request, 'attendance/notice/delete_notice.html', {
         'notice': notice
+    })
+
+# Salary Calculator View Admin
+@login_required
+@user_passes_test(is_superuser)
+def salary_calculator(request):
+    employees = Employee.objects.all().order_by('first_name', 'last_name')
+    results = []
+    selected_employee = None
+
+    if request.method == 'POST':
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+        employee_id = request.POST.get('employee_id')
+
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+            if start_date > end_date:
+                messages.error(request, "Start date cannot be after end date.")
+                return render(request, 'attendance/admin/salary_calculator.html', {'employees': employees})
+
+            # Calculate total days in the date range
+            total_days_in_range = (end_date - start_date).days + 1
+
+            # Filter employees if specific employee selected
+            if employee_id and employee_id != 'all':
+                employees_to_calculate = Employee.objects.filter(id=employee_id)
+                selected_employee = get_object_or_404(Employee, id=employee_id)
+            else:
+                employees_to_calculate = employees
+
+            for emp in employees_to_calculate:
+                if emp.monthly_salary <= 0:
+                    continue  # Skip if no salary set
+
+                # Calculate daily rate based on 30-day month standard
+                daily_rate = emp.monthly_salary / Decimal('30')
+
+                # Get all dates in the range
+                date_range = []
+                current_date = start_date
+                while current_date <= end_date:
+                    date_range.append(current_date)
+                    current_date += timedelta(days=1)
+
+                # Count absent days (days without Present status and without approved leave)
+                absent_days = 0
+                present_days = 0
+                approved_leave_days = 0
+
+                for single_date in date_range:
+                    # Check if there's an attendance record
+                    attendance = Attendance.objects.filter(
+                        employee=emp,
+                        date=single_date
+                    ).first()
+
+                    # Check if there's an approved leave for this date
+                    has_approved_leave = LeaveRequest.objects.filter(
+                        employee=emp,
+                        status='Approved',
+                        start_date__lte=single_date,
+                        end_date__gte=single_date
+                    ).exists()
+
+                    if has_approved_leave:
+                        approved_leave_days += 1
+                    elif attendance and attendance.status == 'Present':
+                        present_days += 1
+                    else:
+                        # No attendance and no approved leave = absent
+                        absent_days += 1
+
+                # Calculate payable days: total days minus absent days
+                payable_days = total_days_in_range - absent_days
+                
+                # Calculate gross salary
+                gross_salary = daily_rate * Decimal(payable_days)
+
+                # Calculate deductions (optional - for absent days)
+                deduction = daily_rate * Decimal(absent_days)
+
+                results.append({
+                    'employee': emp,
+                    'daily_rate': daily_rate,
+                    'total_days': total_days_in_range,
+                    'present_days': present_days,
+                    'approved_leave_days': approved_leave_days,
+                    'absent_days': absent_days,
+                    'payable_days': payable_days,
+                    'gross_salary': gross_salary.quantize(Decimal('0.01')),
+                    'deduction': deduction.quantize(Decimal('0.01')),
+                    'start_date': start_date,
+                    'end_date': end_date,
+                })
+
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+        except Employee.DoesNotExist:
+            messages.error(request, "Employee not found.")
+
+    # Calculate totals for summary cards
+    total_gross_salary = sum(r['gross_salary'] for r in results)
+    total_present_days = sum(r['present_days'] for r in results)
+    total_absent_days = sum(r['absent_days'] for r in results)
+    total_leave_days = sum(r['approved_leave_days'] for r in results)
+
+    return render(request, 'attendance/admin/salary_calculator.html', {
+        'employees': employees,
+        'results': results,
+        'start_date': request.POST.get('start_date') if request.method == 'POST' else '',
+        'end_date': request.POST.get('end_date') if request.method == 'POST' else '',
+        'selected_employee': selected_employee,
+        'selected_employee_id': request.POST.get('employee_id') if request.method == 'POST' else 'all',
+        'total_gross_salary': total_gross_salary,
+        'total_present_days': total_present_days,
+        'total_absent_days': total_absent_days,
+        'total_leave_days': total_leave_days,
     })

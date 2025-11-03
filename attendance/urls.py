@@ -29,4 +29,6 @@ urlpatterns = [
     path('toggle-notice/<int:notice_id>/', views.toggle_notice, name='toggle_notice'),
     path('delete-notice/<int:notice_id>/', views.delete_notice, name='delete_notice'),
 
+# Salary Calculator URL
+    path('admin-salary-calculator/', views.salary_calculator, name='salary_calculator'),
 ]

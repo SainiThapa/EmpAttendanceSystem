@@ -1,0 +1,287 @@
+{% extends 'attendance/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4 fw-bold text-primary">
+        <i class="fas fa-calculator me-2"></i>Salary Calculator
+    </h2>
+
+    <!-- Calculation Form -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Salary Calculation Parameters</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                
+                <div class="col-md-12">
+                    <label for="employee_id" class="form-label fw-bold">
+                        <i class="fas fa-user me-1"></i>Select Employee
+                    </label>
+                    <select class="form-select" name="employee_id" id="employee_id" required>
+                        <option value="all" {% if selected_employee_id == 'all' %}selected{% endif %}>
+                            All Employees
+                        </option>
+                        {% for emp in employees %}
+                        <option value="{{ emp.id }}" {% if selected_employee_id|stringformat:"s" == emp.id|stringformat:"s" %}selected{% endif %}>
+                            {{ emp.first_name }} {{ emp.last_name }} ({{ emp.employee_id }}) - NPR {{ emp.monthly_salary|floatformat:2 }}/month
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Select a specific employee or calculate for all employees</small>
+                </div>
+
+                <div class="col-md-5">
+                    <label for="start_date" class="form-label fw-bold">
+                        <i class="fas fa-calendar-alt me-1"></i>Start Date
+                    </label>
+                    <input type="date" class="form-control" name="start_date" id="start_date" required
+                           value="{{ start_date|default:'' }}">
+                    <small class="text-muted">Can be from any month</small>
+                </div>
+
+                <div class="col-md-5">
+                    <label for="end_date" class="form-label fw-bold">
+                        <i class="fas fa-calendar-check me-1"></i>End Date
+                    </label>
+                    <input type="date" class="form-control" name="end_date" id="end_date" required
+                           value="{{ end_date|default:'' }}">
+                    <small class="text-muted">Can span across months</small>
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="fas fa-calculator me-1"></i>Calculate
+                    </button>
+                </div>
+
+                <div class="col-12">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Calculation Logic:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Daily Rate = Monthly Salary ÷ 30 days</li>
+                            <li>Payable Days = Total Days in Range - Absent Days</li>
+                            <li>Approved Leave Days are counted as Payable Days</li>
+                            <li>Gross Salary = Daily Rate × Payable Days</li>
+                            <li>Works across multiple months (e.g., 18th Oct to 17th Nov)</li>
+                        </ul>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    {% if results %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Salary Report: {{ results.0.start_date|date:"M d, Y" }} to {{ results.0.end_date|date:"M d, Y" }}
+                    {% if selected_employee %}
+                        - {{ selected_employee.first_name }} {{ selected_employee.last_name }}
+                    {% endif %}
+                </h5>
+                <span class="badge bg-light text-dark">{{ results|length }} Employee(s)</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="salaryTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Employee</th>
+                            <th>Monthly Salary</th>
+                            <th>Daily Rate</th>
+                            <th class="text-center">Total Days</th>
+                            <th class="text-center">Present</th>
+                            <th class="text-center">Leave</th>
+                            <th class="text-center">Absent</th>
+                            <th class="text-center">Payable Days</th>
+                            <th>Deduction</th>
+                            <th>Gross Salary</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in results %}
+                        <tr>
+                            <td>
+                                <strong>{{ r.employee.first_name }} {{ r.employee.last_name }}</strong><br>
+                                <small class="text-muted">{{ r.employee.employee_id }}</small>
+                            </td>
+                            <td>NPR {{ r.employee.monthly_salary|floatformat:2 }}</td>
+                            <td>NPR {{ r.daily_rate|floatformat:2 }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ r.total_days }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-success">{{ r.present_days }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ r.approved_leave_days }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if r.absent_days > 0 %}
+                                    <span class="badge bg-danger">{{ r.absent_days }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary">{{ r.payable_days }}</span>
+                            </td>
+                            <td>
+                                {% if r.deduction > 0 %}
+                                    <span class="text-danger">-NPR {{ r.deduction|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-success">NPR 0.00</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong class="text-success fs-5">NPR {{ r.gross_salary|floatformat:2 }}</strong>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="9" class="text-end">Total Payable:</td>
+                            <td>
+                                <strong class="text-success fs-5">
+                                    NPR {{ total_gross_salary|floatformat:2 }}
+                                </strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div class="mb-2 mb-md-0">
+                    <small class="text-muted">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Period: {{ results.0.total_days }} days
+                        ({{ results.0.start_date|date:"d M Y" }} - {{ results.0.end_date|date:"d M Y" }})
+                    </small>
+                </div>
+                <div>
+                    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-print me-1"></i>Print Report
+                    </button>
+                    <button onclick="exportToExcel()" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-file-excel me-1"></i>Export to Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mt-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center border-primary shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total Employees</h6>
+                    <h3 class="text-primary mb-0">{{ results|length }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center border-success shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total Present Days</h6>
+                    <h3 class="text-success mb-0">{{ total_present_days }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center border-danger shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total Absent Days</h6>
+                    <h3 class="text-danger mb-0">{{ total_absent_days }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center border-info shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total Leave Days</h6>
+                    <h3 class="text-info mb-0">{{ total_leave_days }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% elif request.method == 'POST' %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        No salary data found. Please check:
+        <ul class="mb-0 mt-2">
+            <li>Selected employee(s) have monthly salary set</li>
+            <li>Date range is correct</li>
+            <li>At least one employee has a salary greater than NPR 0</li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+@media print {
+    .btn, .card-header, .alert, form, .card-footer {
+        display: none !important;
+    }
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+    .container {
+        max-width: 100% !important;
+    }
+}
+</style>
+
+<script>
+// Simple Excel export function
+function exportToExcel() {
+    const table = document.getElementById('salaryTable');
+    if (!table) return;
+    
+    let html = table.outerHTML;
+    const url = 'data:application/vnd.ms-excel,' + encodeURIComponent(html);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'salary_report_' + new Date().toISOString().slice(0,10) + '.xls';
+    link.click();
+}
+
+// Auto-calculate days when dates change
+const startDateInput = document.getElementById('start_date');
+const endDateInput = document.getElementById('end_date');
+
+if (startDateInput && endDateInput) {
+    startDateInput.addEventListener('change', calculateDays);
+    endDateInput.addEventListener('change', calculateDays);
+}
+
+function calculateDays() {
+    const start = document.getElementById('start_date').value;
+    const end = document.getElementById('end_date').value;
+    
+    if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        
+        if (days > 0) {
+            console.log(`Total days in range: ${days}`);
+        } else {
+            alert('End date must be after or equal to start date');
+        }
+    }
+}
+</script>
+{% endblock %}
