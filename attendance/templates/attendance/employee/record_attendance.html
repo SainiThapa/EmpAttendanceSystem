@@ -1,72 +1,179 @@
 {% extends 'attendance/base.html' %}
-{% load static %}
-
 {% block content %}
-<!-- Main container with Bootstrap styling -->
-<div class="container my-5">
-    <!-- Header with gradient text and Font Awesome clock icon -->
-    <h2 class="mb-4 fw-bold text-center" style="background: linear-gradient(90deg, #0d6efd, #6610f2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        <i class="fas fa-clock me-2"></i> Record Attendance for {{ employee.first_name }} {{ employee.last_name }}
-    </h2>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="mb-4 fw-bold text-primary text-center">
+                <i class="fas fa-fingerprint me-2"></i>Record Attendance
+            </h2>
 
-    <!-- Main card with shadow and gradient border -->
-    <div class="card shadow-lg border-0" style="border-left: 5px solid #0d6efd; max-width: 600px; margin: auto;">
-        <div class="card-body p-4">
-            <!-- SVG clock with animated hands -->
-            <div class="text-center mb-4">
-                <div class="clock-container mx-auto" style="width: 120px; height: 120px;">
-                    <svg class="clock-svg" viewBox="0 0 100 100" width="120" height="120">
-                        <!-- Clock face -->
-                        <circle cx="50" cy="50" r="45" fill="#f8f9fa" stroke="#0d6efd" stroke-width="5"/>
-                        <!-- Hour markers -->
-                        <line x1="50" y1="10" x2="50" y2="15" stroke="#343a40" stroke-width="3" class="hour-marker"/>
-                        <line x1="50" y1="85" x2="50" y2="90" stroke="#343a40" stroke-width="3" class="hour-marker" transform="rotate(180 50 50)"/>
-                        <line x1="85" y1="50" x2="90" y2="50" stroke="#343a40" stroke-width="3" class="hour-marker" transform="rotate(90 50 50)"/>
-                        <line x1="10" y1="50" x2="15" y2="50" stroke="#343a40" stroke-width="3" class="hour-marker" transform="rotate(270 50 50)"/>
-                        <!-- Hour hand -->
-                        <line x1="50" y1="50" x2="50" y2="30" stroke="#0d6efd" stroke-width="4" class="hour-hand"/>
-                        <!-- Minute hand -->
-                        <line x1="50" y1="50" x2="50" y2="20" stroke="#6610f2" stroke-width="3" class="minute-hand"/>
-                        <!-- Second hand -->
-                        <line x1="50" y1="50" x2="50" y2="15" stroke="#dc3545" stroke-width="2" class="second-hand"/>
-                        <!-- Center dot -->
-                        <circle cx="50" cy="50" r="3" fill="#343a40"/>
-                    </svg>
-                </div>
-                <!-- Time and date display -->
-                <p class="fw-bold text-primary mt-3" id="current-datetime"></p>
-                <p class="text-muted"><small>Timezone: Asia/Kathmandu (+05:45)</small></p>
-            </div>
-
-            <!-- Form for attendance -->
-            <form method="post" class="text-center">
-                {% csrf_token %}
-                <!-- Button group for punch-in/out and comments toggle -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <!-- Comments toggle button (secondary, left) -->
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#commentsSection" aria-expanded="false" aria-controls="commentsSection">
-                        <i class="fas fa-comment-dots me-1"></i> Add Comments
-                    </button>
-                    <!-- Punch-in/out button (primary, right) -->
-                    <button type="submit" class="btn btn-lg btn-punch {% if is_checked_in %}btn-danger{% else %}btn-success{% endif %}">
-                        <i class="fas {% if is_checked_in %}fa-sign-out-alt{% else %}fa-sign-in-alt{% endif %} me-2"></i>
-                        {% if is_checked_in %}Punch Out{% else %}Punch In{% endif %}
-                    </button>
-                </div>
-
-                <!-- Collapsible comments section (hidden by default) -->
-                <div class="collapse" id="commentsSection">
-                    <div class="mb-3">
-                        <label for="comments" class="form-label fw-bold">Comments</label>
-                        <textarea class="form-control shadow-sm" id="comments" name="comments" rows="3" placeholder="Enter any remarks..."></textarea>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if not is_checked_in %}
+                    <!-- CHECK-IN FORM -->
+                    <div class="text-center mb-4">
+                        <i class="fas fa-sign-in-alt fa-3x text-success mb-3"></i>
+                        <h4 class="text-success">Check In</h4>
+                        <p class="text-muted">Start your workday and set today's tasks</p>
                     </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="checkin">
+                        
+                        <div class="mb-4">
+                            <label for="todo_tasks" class="form-label fw-bold">
+                                <i class="fas fa-tasks me-2"></i>To-Do Tasks for Today
+                            </label>
+                            <textarea class="form-control" id="todo_tasks" name="todo_tasks" 
+                                      rows="5" placeholder="Enter your tasks for today...&#10;&#10;Example:&#10;• Complete project documentation&#10;• Meeting with client at 2 PM&#10;• Review team code"></textarea>
+                            <small class="text-muted">Describe what you plan to accomplish today</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="todo_attachments" class="form-label fw-bold">
+                                <i class="fas fa-paperclip me-2"></i>Attach Screenshots/Files (Optional)
+                            </label>
+                            <input type="file" class="form-control" id="todo_attachments" 
+                                   name="todo_attachments" multiple accept="image/*">
+                            <small class="text-muted">You can attach multiple images (screenshots, diagrams, etc.)</small>
+                            <div id="todo_preview" class="mt-2 row g-2"></div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>Check In
+                            </button>
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+
+                    {% else %}
+                    <!-- CHECK-OUT FORM -->
+                    <div class="text-center mb-4">
+                        <i class="fas fa-sign-out-alt fa-3x text-danger mb-3"></i>
+                        <h4 class="text-danger">Check Out</h4>
+                        <p class="text-muted">End your workday and report completed tasks</p>
+                    </div>
+
+                    <!-- Display To-Do Tasks -->
+                    <div class="alert alert-info mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-clipboard-list me-2"></i>Today's To-Do Tasks:
+                        </h6>
+                        {% if attendance.todo_tasks %}
+                            <div class="mt-2" style="white-space: pre-line;">{{ attendance.todo_tasks }}</div>
+                            {% if attendance.get_todo_attachments %}
+                            <div class="mt-3">
+                                <strong>Attachments:</strong>
+                                <div class="row g-2 mt-2">
+                                    {% for attachment in attendance.get_todo_attachments %}
+                                    <div class="col-md-3 col-sm-4 col-6">
+                                        <img src="{{ attachment.image.url }}" class="img-thumbnail" alt="To-Do Attachment">
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <p class="mb-0">No tasks specified</p>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="checkout">
+                        
+                        <div class="mb-4">
+                            <label for="completed_tasks" class="form-label fw-bold">
+                                <i class="fas fa-check-double me-2"></i>Completed Tasks
+                            </label>
+                            <textarea class="form-control" id="completed_tasks" name="completed_tasks" 
+                                      rows="5" placeholder="Report what you completed today...&#10;&#10;Example:&#10;• ✓ Completed project documentation&#10;• ✓ Client meeting done - approved design&#10;• ✓ Code review completed"></textarea>
+                            <small class="text-muted">Describe what you accomplished today</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="completed_attachments" class="form-label fw-bold">
+                                <i class="fas fa-paperclip me-2"></i>Attach Proof of Completion (Optional)
+                            </label>
+                            <input type="file" class="form-control" id="completed_attachments" 
+                                   name="completed_attachments" multiple accept="image/*">
+                            <small class="text-muted">Upload screenshots of completed work</small>
+                            <div id="completed_preview" class="mt-2 row g-2"></div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-clock me-2"></i>Check Out
+                            </button>
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+                    {% endif %}
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Load custom CSS and JS -->
-<link rel="stylesheet" href="{% static 'attendance/css/attendance.css' %}">
-<script src="{% static 'attendance/js/attendance.js' %}"></script>
+<script>
+// Preview images before upload for to-do attachments
+document.getElementById('todo_attachments')?.addEventListener('change', function(e) {
+    const preview = document.getElementById('todo_preview');
+    preview.innerHTML = '';
+    
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const col = document.createElement('div');
+                col.className = 'col-md-3 col-sm-4 col-6';
+                col.innerHTML = `
+                    <div class="position-relative">
+                        <img src="${e.target.result}" class="img-thumbnail" alt="Preview">
+                        <div class="position-absolute top-0 end-0 p-1">
+                            <span class="badge bg-success">New</span>
+                        </div>
+                    </div>
+                `;
+                preview.appendChild(col);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+});
+
+// Preview images before upload for completed attachments
+document.getElementById('completed_attachments')?.addEventListener('change', function(e) {
+    const preview = document.getElementById('completed_preview');
+    preview.innerHTML = '';
+    
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const col = document.createElement('div');
+                col.className = 'col-md-3 col-sm-4 col-6';
+                col.innerHTML = `
+                    <div class="position-relative">
+                        <img src="${e.target.result}" class="img-thumbnail" alt="Preview">
+                        <div class="position-absolute top-0 end-0 p-1">
+                            <span class="badge bg-success">New</span>
+                        </div>
+                    </div>
+                `;
+                preview.appendChild(col);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+});
+</script>
 {% endblock %}

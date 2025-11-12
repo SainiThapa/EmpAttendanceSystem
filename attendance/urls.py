@@ -31,4 +31,9 @@ urlpatterns = [
 
 # Salary Calculator URL
     path('admin-salary-calculator/', views.salary_calculator, name='salary_calculator'),
+        
+    # Task Management URLs
+    path('task-detail/<int:attendance_id>/', views.task_detail, name='task_detail'),
+    path('admin-daily-tasks/', views.admin_daily_tasks, name='admin_daily_tasks'),
+
 ]

@@ -39,20 +39,23 @@ class Employee(models.Model):
         return f"{self.first_name} {self.last_name} ({self.employee_id})"
 
 class Attendance(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
     check_in = models.DateTimeField(null=True, blank=True)
     check_out = models.DateTimeField(null=True, blank=True)
     hours_worked = models.FloatField(null=True, blank=True)
     date = models.DateField(default=timezone.now)
+    
+    # OLD comment field (keep for backward compatibility)
     comments = models.TextField(blank=True, null=True)
-    status = models.CharField(
-        max_length=15,
-        default='Present',
-        choices=[
-            ('Present', 'Present'),
-            ('Absent', 'Absent'),
-            ('Approved Leave', 'Approved Leave'),
-        ])
+    
+    # NEW task-related fields
+    todo_tasks = models.TextField(blank=True, null=True, help_text="Tasks to do for the day (check-in)")
+    completed_tasks = models.TextField(blank=True, null=True, help_text="Tasks completed (check-out)")
+    
+    status = models.CharField(max_length=10, default='Present', choices=[
+        ('Present', 'Present'),
+        ('Absent', 'Absent')
+    ])
 
     def save(self, *args, **kwargs):
         if self.check_out and self.check_in:
@@ -67,7 +70,15 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.employee} - {self.date} ({self.status})"
-
+    
+    def get_todo_attachments(self):
+        """Get all to-do task attachments"""
+        return self.task_attachments.filter(task_type='todo')
+    
+    def get_completed_attachments(self):
+        """Get all completed task attachments"""
+        return self.task_attachments.filter(task_type='completed')
+    
 class AbsentEmployeeManager:
     @staticmethod
     def mark_absent_for_day(target_date=None):
@@ -86,6 +97,27 @@ class AbsentEmployeeManager:
                     date=target_date,
                     status='Absent'
                 )
+
+class TaskAttachment(models.Model):
+    """Model to store multiple attachments for tasks"""
+    TASK_TYPE_CHOICES = [
+        ('todo', 'To-Do'),
+        ('completed', 'Completed'),
+    ]
+    
+    attendance = models.ForeignKey('Attendance', on_delete=models.CASCADE, related_name='task_attachments')
+    task_type = models.CharField(max_length=10, choices=TASK_TYPE_CHOICES)
+    image = models.ImageField(upload_to='task_attachments/%Y/%m/%d/')
+    caption = models.CharField(max_length=200, blank=True, null=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.task_type} - {self.attendance.employee} - {self.uploaded_at}"
+    
+    class Meta:
+        ordering = ['-uploaded_at']
+
+
 
 class LeaveRequest(models.Model):
     STATUS_CHOICES = [

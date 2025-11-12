@@ -1,0 +1,171 @@
+{% extends 'attendance/base.html' %}
+{% load attendance_tags %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="fas fa-clipboard-check me-2"></i>Task Details
+        </h2>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <!-- Attendance Info Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-user me-2"></i>
+                {{ attendance.employee.first_name }} {{ attendance.employee.last_name }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <p class="mb-1"><strong>Date:</strong></p>
+                    <p>{{ attendance.date|date:"F d, Y" }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><strong>Check-In:</strong></p>
+                    <p>{{ attendance.check_in|date:"H:i:s"|default:"-" }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><strong>Check-Out:</strong></p>
+                    <p>{{ attendance.check_out|date:"H:i:s"|default:"-" }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p class="mb-1"><strong>Hours Worked:</strong></p>
+                    <p>{{ attendance.hours_worked|format_hours }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- To-Do Tasks Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-primary h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-list me-2"></i>To-Do Tasks
+                    </h5>
+                    <small>Planned at check-in: {{ attendance.check_in|date:"H:i"|default:"-" }}</small>
+                </div>
+                <div class="card-body">
+                    {% if attendance.todo_tasks %}
+                        <div class="mb-3" style="white-space: pre-line; line-height: 1.8;">
+                            {{ attendance.todo_tasks }}
+                        </div>
+                        
+                        {% if todo_attachments %}
+                        <hr>
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-paperclip me-2"></i>Attachments ({{ todo_attachments|length }})
+                        </h6>
+                        <div class="row g-3">
+                            {% for attachment in todo_attachments %}
+                            <div class="col-md-6 col-sm-6">
+                                <div class="card">
+                                    <a href="{{ attachment.image.url }}" target="_blank">
+                                        <img src="{{ attachment.image.url }}" class="card-img-top" alt="To-Do Attachment">
+                                    </a>
+                                    <div class="card-body p-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>{{ attachment.uploaded_at|date:"M d, H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="fas fa-info-circle me-2"></i>No tasks were specified
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Tasks Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-success h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-double me-2"></i>Completed Tasks
+                    </h5>
+                    {% if attendance.check_out %}
+                        <small>Reported at check-out: {{ attendance.check_out|date:"H:i" }}</small>
+                    {% else %}
+                        <small class="text-warning">Pending check-out</small>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if attendance.completed_tasks %}
+                        <div class="mb-3" style="white-space: pre-line; line-height: 1.8;">
+                            {{ attendance.completed_tasks }}
+                        </div>
+                        
+                        {% if completed_attachments %}
+                        <hr>
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-paperclip me-2"></i>Proof of Completion ({{ completed_attachments|length }})
+                        </h6>
+                        <div class="row g-3">
+                            {% for attachment in completed_attachments %}
+                            <div class="col-md-6 col-sm-6">
+                                <div class="card">
+                                    <a href="{{ attachment.image.url }}" target="_blank">
+                                        <img src="{{ attachment.image.url }}" class="card-img-top" alt="Completed Attachment">
+                                    </a>
+                                    <div class="card-body p-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>{{ attachment.uploaded_at|date:"M d, H:i" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-{% if attendance.check_out %}warning{% else %}info{% endif %} mb-0">
+                            {% if attendance.check_out %}
+                                <i class="fas fa-info-circle me-2"></i>No completion report was provided
+                            {% else %}
+                                <i class="fas fa-clock me-2"></i>Will be updated at check-out
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Old Comments (if any) -->
+    {% if attendance.comments %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h6 class="mb-0">
+                <i class="fas fa-comment me-2"></i>Additional Comments
+            </h6>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">{{ attendance.comments }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.card-img-top {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.card-img-top:hover {
+    transform: scale(1.05);
+}
+</style>
+{% endblock %}

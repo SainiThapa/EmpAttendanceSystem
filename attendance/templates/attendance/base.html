@@ -70,11 +70,6 @@
                         {% else %}
                         <!-- Admin Menu -->
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'admin_dashboard' %}">
-                                <i class="fas fa-chart-line me-1"></i>Admin Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'attendance_calendar' %}">
                                 <i class="fas fa-calendar-alt me-1"></i>Attendance Calendar
                             </a>
@@ -94,13 +89,12 @@
                                 <i class="fas fa-university me-1"></i>Bank Info
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'birthday_calendar' %}">
                                 <i class="fas fa-birthday-cake me-1"></i>Birthdays
                             </a>
                         </li>
-                        {% endif %}
-                        
                         <li class="nav-item">
                             <form action="{% url 'logout' %}" method="post" class="d-inline">
                                 {% csrf_token %}

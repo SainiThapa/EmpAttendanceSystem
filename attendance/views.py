@@ -11,6 +11,8 @@ from calendar import monthrange
 from datetime import datetime, time, timedelta
 import calendar
 from django.db.models import Q
+from .models import TaskAttachment
+
 import nepali_datetime
 from nepali_datetime import date as nepali_date
 
@@ -53,16 +55,23 @@ def dashboard(request):
     attendance = Attendance.objects.filter(employee=employee, date=today).first()
     history = Attendance.objects.filter(employee=employee).order_by('-date')[:30]
 
-    # NEW: Add leave statistics
+    # Leave statistics
     leave_stats = {
         'pending': LeaveRequest.objects.filter(employee=employee, status='Pending').count(),
         'approved': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
         'rejected': LeaveRequest.objects.filter(employee=employee, status='Rejected').count(),
         'used': LeaveRequest.objects.filter(employee=employee, status='Approved').count(),
     }
-    # Get recent leave  for dashboard
+    
     recent_leaves = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')[:5]
     active_notices = Notice.objects.filter(is_active=True).order_by('-published_at')
+
+    # Get today's tasks
+    todo_attachments = []
+    completed_attachments = []
+    if attendance:
+        todo_attachments = attendance.get_todo_attachments()
+        completed_attachments = attendance.get_completed_attachments()
 
     return render(request, 'attendance/employee/dashboard.html', {
         'employee': employee,
@@ -70,7 +79,9 @@ def dashboard(request):
         'history': history,
         'leave_stats': leave_stats,
         'recent_leaves': recent_leaves,
-        'active_notices': active_notices,   # <-- add this
+        'active_notices': active_notices,
+        'todo_attachments': todo_attachments,
+        'completed_attachments': completed_attachments,
     })
 
 @login_required
@@ -86,29 +97,63 @@ def record_attendance(request):
     is_checked_in = attendance and not attendance.check_out
 
     if request.method == 'POST':
-        comments = request.POST.get('comments', '')
-        if not attendance:
-            Attendance.objects.create(
+        action = request.POST.get('action')  # 'checkin' or 'checkout'
+        
+        if action == 'checkin' and not attendance:
+            # Handle Check-in
+            todo_tasks = request.POST.get('todo_tasks', '')
+            
+            # Create attendance record
+            attendance = Attendance.objects.create(
                 employee=employee,
                 check_in=timezone.now(),
                 date=today,
-                comments=comments,
+                todo_tasks=todo_tasks,
                 status='Present'
             )
-            messages.success(request, "Check-in recorded successfully.")
-        elif is_checked_in:
+            
+            # Handle multiple file uploads for to-do tasks
+            todo_files = request.FILES.getlist('todo_attachments')
+            for file in todo_files:
+                TaskAttachment.objects.create(
+                    attendance=attendance,
+                    task_type='todo',
+                    image=file
+                )
+            
+            messages.success(request, "Check-in recorded successfully with to-do tasks.")
+            return redirect('dashboard')
+            
+        elif action == 'checkout' and is_checked_in:
+            # Handle Check-out
+            completed_tasks = request.POST.get('completed_tasks', '')
+            
+            # Update attendance record
             attendance.check_out = timezone.now()
-            attendance.comments = comments
+            attendance.completed_tasks = completed_tasks
             attendance.save()
-            messages.success(request, "Check-out recorded successfully.")
+            
+            # Handle multiple file uploads for completed tasks
+            completed_files = request.FILES.getlist('completed_attachments')
+            for file in completed_files:
+                TaskAttachment.objects.create(
+                    attendance=attendance,
+                    task_type='completed',
+                    image=file
+                )
+            
+            messages.success(request, "Check-out recorded successfully with completed tasks.")
+            return redirect('dashboard')
         else:
-            messages.warning(request, "Attendance already completed for today.")
-        return redirect('dashboard')
+            messages.warning(request, "Invalid action or attendance already completed for today.")
+            return redirect('dashboard')
 
     return render(request, 'attendance/employee/record_attendance.html', {
         'employee': employee,
-        'is_checked_in': is_checked_in
+        'is_checked_in': is_checked_in,
+        'attendance': attendance
     })
+
 
 @login_required
 def employee_profile(request):
@@ -583,7 +628,7 @@ def request_leave(request):
 @user_passes_test(lambda u: u.is_superuser)
 def admin_leave_requests(request):
     leave_requests = LeaveRequest.objects.all().order_by('-created_at')
-    return render(request, 'attendance/admin_leave_requests.html', {
+    return render(request, 'attendance/admin/admin_leave_requests.html', {
         'leave_requests': leave_requests
     })
 login_required
@@ -883,4 +928,63 @@ def salary_calculator(request):
         'total_present_days': total_present_days,
         'total_absent_days': total_absent_days,
         'total_leave_days': total_leave_days,
+    })
+
+# Task Management Views
+@login_required
+def task_detail(request, attendance_id):
+    """View to show task details with attachments"""
+    attendance = get_object_or_404(Attendance, id=attendance_id)
+    
+    # Check if user is authorized (employee viewing own tasks or admin)
+    if not (request.user.is_superuser or attendance.employee.user == request.user):
+        messages.error(request, "You don't have permission to view this.")
+        return redirect('dashboard')
+    
+    todo_attachments = attendance.get_todo_attachments()
+    completed_attachments = attendance.get_completed_attachments()
+    
+    return render(request, 'attendance/tasks/task_detail.html', {
+        'attendance': attendance,
+        'todo_attachments': todo_attachments,
+        'completed_attachments': completed_attachments,
+    })
+
+
+# Admin view to see all employee tasks for today
+@login_required
+@user_passes_test(is_superuser)
+def admin_daily_tasks(request):
+    """Admin view to see all employees' tasks for today"""
+    today = timezone.now().date()
+    selected_date = request.GET.get('date', today.strftime('%Y-%m-%d'))
+    
+    try:
+        selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    except ValueError:
+        selected_date = today
+    
+    # Get all attendance records for selected date
+    attendances = Attendance.objects.filter(
+        date=selected_date
+    ).select_related('employee').prefetch_related('task_attachments')
+    
+    # Prepare task data
+    task_data = []
+    for attendance in attendances:
+        task_data.append({
+            'employee': attendance.employee,
+            'attendance': attendance,
+            'todo_tasks': attendance.todo_tasks,
+            'completed_tasks': attendance.completed_tasks,
+            'todo_attachments': attendance.get_todo_attachments(),
+            'completed_attachments': attendance.get_completed_attachments(),
+            'check_in': attendance.check_in,
+            'check_out': attendance.check_out,
+        })
+    
+    return render(request, 'attendance/tasks/admin_daily_tasks.html', {
+        'task_data': task_data,
+        'selected_date': selected_date,
+        'today': today,
     })
