@@ -102,6 +102,9 @@ def record_attendance(request):
         if action == 'checkin' and not attendance:
             # Handle Check-in
             todo_tasks = request.POST.get('todo_tasks', '')
+            if not todo_tasks.strip():
+                messages.error(request, "To-Do Tasks cannot be empty.")
+                return redirect('record_attendance')
             
             # Create attendance record
             attendance = Attendance.objects.create(
@@ -127,7 +130,11 @@ def record_attendance(request):
         elif action == 'checkout' and is_checked_in:
             # Handle Check-out
             completed_tasks = request.POST.get('completed_tasks', '')
-            
+
+            if not completed_tasks.strip():
+                messages.error(request, "Completed Tasks cannot be empty.")
+                return redirect('record_attendance')
+
             # Update attendance record
             attendance.check_out = timezone.now()
             attendance.completed_tasks = completed_tasks
@@ -709,8 +716,6 @@ def approve_reject_leave(request, leave_id, action):
     leave.save()
     messages.success(request, f'Leave request {action}d.')
     return redirect('admin_leave_requests')
-
-
 
 @login_required
 @user_passes_test(is_superuser)
