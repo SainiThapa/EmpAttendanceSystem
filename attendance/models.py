@@ -79,6 +79,16 @@ class Attendance(models.Model):
         """Get all completed task attachments"""
         return self.task_attachments.filter(task_type='completed')
     
+    def has_feedback(self):
+        """Check if admin has provided feedback"""
+        return hasattr(self, 'task_feedback')
+    
+    def is_feedback_approved(self):
+        """Check if tasks are approved by admin"""
+        if self.has_feedback():
+            return self.task_feedback.approved
+        return False
+    
 class AbsentEmployeeManager:
     @staticmethod
     def mark_absent_for_day(target_date=None):
@@ -117,6 +127,23 @@ class TaskAttachment(models.Model):
     class Meta:
         ordering = ['-uploaded_at']
 
+class TaskFeedback(models.Model):
+    """Model for admin feedback on employee completed tasks"""
+    attendance = models.OneToOneField('Attendance', on_delete=models.CASCADE, related_name='task_feedback')
+    approved = models.BooleanField(default=False, help_text="Admin approval status")
+    admin_comment = models.TextField(blank=True, null=True, help_text="Admin's feedback on completed tasks")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='task_reviews')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    is_read = models.BooleanField(default=False, help_text="Has employee read the feedback?")
+    
+    def __str__(self):
+        status = "Approved" if self.approved else "Pending"
+        return f"{self.attendance.employee} - {self.attendance.date} - {status}"
+    
+    class Meta:
+        ordering = ['-reviewed_at']
+        verbose_name = "Task Feedback"
+        verbose_name_plural = "Task Feedbacks"
 
 
 class LeaveRequest(models.Model):

@@ -1,0 +1,184 @@
+{% extends 'attendance/base.html' %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="fas fa-clipboard-check me-2"></i>Review & Approve Tasks
+        </h2>
+        <div class="d-flex gap-2">
+            <form method="get" class="d-flex gap-2">
+                <input type="date" name="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}">
+                <select name="status" class="form-select">
+                    <option value="all" {% if filter_status == 'all' %}selected{% endif %}>All Tasks</option>
+                    <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="approved" {% if filter_status == 'approved' %}selected{% endif %}>Approved</option>
+                </select>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-1"></i>Filter
+                </button>
+            </form>
+            <a href="{% url 'admin_review_tasks' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-calendar-day me-1"></i>Today
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Viewing:</strong> {{ selected_date|date:"l, F d, Y" }}
+        <span class="ms-3">
+            <strong>Filter:</strong> 
+            {% if filter_status == 'all' %}All Tasks
+            {% elif filter_status == 'pending' %}Pending Review
+            {% else %}Approved Tasks{% endif %}
+        </span>
+        <span class="ms-3 badge bg-primary">{{ attendances|length }} Task(s)</span>
+    </div>
+
+    {% if attendances %}
+    <div class="row">
+        {% for attendance in attendances %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card shadow-sm h-100 {% if attendance.has_feedback and attendance.task_feedback.approved %}border-success{% elif attendance.has_feedback %}border-warning{% else %}border-secondary{% endif %}">
+                <!-- Card Header -->
+                <div class="card-header {% if attendance.has_feedback and attendance.task_feedback.approved %}bg-success{% elif attendance.has_feedback %}bg-warning{% else %}bg-secondary{% endif %} text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-user me-2"></i>
+                            {{ attendance.employee.first_name }} {{ attendance.employee.last_name }}
+                        </h6>
+                        {% if attendance.has_feedback %}
+                            {% if attendance.task_feedback.approved %}
+                                <span class="badge bg-light text-success">
+                                    <i class="fas fa-check-circle me-1"></i>Approved
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-warning">
+                                    <i class="fas fa-clock me-1"></i>Reviewed
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-light text-secondary">
+                                <i class="fas fa-hourglass-half me-1"></i>Pending
+                            </span>
+                        {% endif %}
+                    </div>
+                    <small>{{ attendance.employee.employee_id }}</small>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body">
+                    <!-- To-Do Tasks -->
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-2">
+                            <i class="fas fa-clipboard-list me-1"></i>To-Do Tasks
+                        </h6>
+                        <div class="bg-light p-2 rounded" style="font-size: 0.9rem; white-space: pre-line;">
+                            {{ attendance.todo_tasks|default:"Not specified" }}
+                        </div>
+                    </div>
+
+                    <!-- Completed Tasks -->
+                    <div class="mb-3">
+                        <h6 class="text-success mb-2">
+                            <i class="fas fa-check-double me-1"></i>Completed Tasks
+                        </h6>
+                        <div class="bg-light p-2 rounded" style="font-size: 0.9rem; white-space: pre-line;">
+                            {{ attendance.completed_tasks|default:"Not reported" }}
+                        </div>
+                    </div>
+
+                    <!-- Attachments -->
+                    {% with completed_attachments=attendance.get_completed_attachments %}
+                    {% if completed_attachments %}
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-paperclip me-1"></i>Attachments ({{ completed_attachments|length }})
+                        </h6>
+                        <div class="row g-1">
+                            {% for attachment in completed_attachments|slice:":4" %}
+                            <div class="col-6">
+                                <a href="{{ attachment.image.url }}" target="_blank">
+                                    <img src="{{ attachment.image.url }}" class="img-thumbnail" alt="Attachment">
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    <!-- Time Info -->
+                    <div class="small text-muted mb-3">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ attendance.check_in|date:"H:i" }} - {{ attendance.check_out|date:"H:i"|default:"N/A" }}
+                        ({{ attendance.hours_worked|floatformat:1 }} hrs)
+                    </div>
+
+                    <!-- Previous Feedback -->
+                    {% if attendance.has_feedback %}
+                    <div class="alert alert-{% if attendance.task_feedback.approved %}success{% else %}warning{% endif %} mb-3">
+                        <strong>Previous Feedback:</strong>
+                        <p class="mb-1 small">{{ attendance.task_feedback.admin_comment|default:"No comment provided" }}</p>
+                        <small class="text-muted">
+                            By {{ attendance.task_feedback.reviewed_by.username }} 
+                            on {{ attendance.task_feedback.reviewed_at|date:"M d, H:i" }}
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <!-- Review Form -->
+                    <form method="post" action="{% url 'approve_task' attendance.id %}" class="border-top pt-3">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-comment me-1"></i>Feedback Comment
+                            </label>
+                            <textarea name="admin_comment" class="form-control" rows="3" 
+                                      placeholder="Provide feedback to employee..."
+                                      >{% if attendance.has_feedback %}{{ attendance.task_feedback.admin_comment }}{% endif %}</textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="approved" value="true" class="btn btn-success btn-sm flex-fill">
+                                <i class="fas fa-check-circle me-1"></i>Approve
+                            </button>
+                            <button type="submit" name="approved" value="false" class="btn btn-warning btn-sm flex-fill">
+                                <i class="fas fa-edit me-1"></i>Review
+                            </button>
+                            <a href="{% url 'task_detail' attendance.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        No completed tasks found for {{ selected_date|date:"F d, Y" }} with the selected filter.
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.img-thumbnail {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.img-thumbnail:hover {
+    transform: scale(1.05);
+}
+</style>
+{% endblock %}

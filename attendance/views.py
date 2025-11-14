@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from django.urls import reverse
 from django.db import models
-from .models import Employee, Attendance, Department, LeaveRequest, Notice
+from .models import Employee, Attendance, Department, LeaveRequest, Notice, TaskAttachment, TaskFeedback
 from calendar import monthrange
 from datetime import datetime, time, timedelta
 import calendar
@@ -161,6 +161,24 @@ def record_attendance(request):
         'attendance': attendance
     })
 
+@login_required
+def task_detail(request, attendance_id):
+    """View to show task details with attachments"""
+    attendance = get_object_or_404(Attendance, id=attendance_id)
+    
+    # Check if user is authorized (employee viewing own tasks or admin)
+    if not (request.user.is_superuser or attendance.employee.user == request.user):
+        messages.error(request, "You don't have permission to view this.")
+        return redirect('dashboard')
+    
+    todo_attachments = attendance.get_todo_attachments()
+    completed_attachments = attendance.get_completed_attachments()
+    
+    return render(request, 'attendance/task_detail.html', {
+        'attendance': attendance,
+        'todo_attachments': todo_attachments,
+        'completed_attachments': completed_attachments,
+    })
 
 @login_required
 def employee_profile(request):
@@ -638,7 +656,8 @@ def admin_leave_requests(request):
     return render(request, 'attendance/admin/admin_leave_requests.html', {
         'leave_requests': leave_requests
     })
-login_required
+
+@login_required
 def employee_attendance(request):
     try:
         employee = request.user.employee
@@ -993,3 +1012,106 @@ def admin_daily_tasks(request):
         'selected_date': selected_date,
         'today': today,
     })
+
+@login_required
+def employee_feedback(request):
+    """View for employee to see all admin feedback"""
+    try:
+        employee = request.user.employee
+    except Employee.DoesNotExist:
+        messages.error(request, "You are not registered as an employee.")
+        return redirect('login')
+    
+    # Get all feedback for this employee
+    all_feedback = TaskFeedback.objects.filter(
+        attendance__employee=employee
+    ).select_related('attendance', 'reviewed_by').order_by('-reviewed_at')
+    
+    # Mark all as read
+    TaskFeedback.objects.filter(
+        attendance__employee=employee,
+        is_read=False
+    ).update(is_read=True)
+    
+    return render(request, 'attendance/employee/employee_feedback.html', {
+        'employee': employee,
+        'all_feedback': all_feedback,
+    })
+
+
+# NEW: Admin view to approve/review tasks
+@login_required
+@user_passes_test(is_superuser)
+def admin_review_tasks(request):
+    """Admin view to review and approve employee tasks"""
+    selected_date = request.GET.get('date', timezone.now().date().strftime('%Y-%m-%d'))
+    filter_status = request.GET.get('status', 'all')  # all, pending, approved
+    
+    try:
+        selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    except ValueError:
+        selected_date = timezone.now().date()
+    
+    # Get attendance records with completed tasks
+    attendances = Attendance.objects.filter(
+        date=selected_date,
+        completed_tasks__isnull=False
+    ).exclude(
+        completed_tasks=''
+    ).select_related('employee').prefetch_related('task_attachments', 'task_feedback')
+    
+    # Filter by approval status
+    if filter_status == 'pending':
+        # No feedback or not approved
+        attendances = [att for att in attendances if not att.has_feedback() or not att.task_feedback.approved]
+    elif filter_status == 'approved':
+        # Has feedback and approved
+        attendances = [att for att in attendances if att.has_feedback() and att.task_feedback.approved]
+    
+    return render(request, 'attendance/admin/admin_review_tasks.html', {
+        'attendances': attendances,
+        'selected_date': selected_date,
+        'filter_status': filter_status,
+        'today': timezone.now().date(),
+    })
+
+
+# NEW: Admin action to approve task and add comment
+@login_required
+@user_passes_test(is_superuser)
+def approve_task(request, attendance_id):
+    """Admin approves task with optional comment"""
+    attendance = get_object_or_404(Attendance, id=attendance_id)
+    
+    if request.method == 'POST':
+        approved = request.POST.get('approved') == 'true'
+        admin_comment = request.POST.get('admin_comment', '')
+        
+        # Create or update feedback
+        feedback, created = TaskFeedback.objects.get_or_create(
+            attendance=attendance,
+            defaults={
+                'approved': approved,
+                'admin_comment': admin_comment,
+                'reviewed_by': request.user,
+                'reviewed_at': timezone.now(),
+                'is_read': False,
+            }
+        )
+        
+        if not created:
+            # Update existing feedback
+            feedback.approved = approved
+            feedback.admin_comment = admin_comment
+            feedback.reviewed_by = request.user
+            feedback.reviewed_at = timezone.now()
+            feedback.is_read = False  # Mark as unread when updated
+            feedback.save()
+        
+        status = "approved" if approved else "reviewed"
+        messages.success(request, f'Task {status} successfully for {attendance.employee.first_name} {attendance.employee.last_name}')
+        
+        # Redirect back to review page
+        return redirect(f"{reverse('admin_review_tasks')}?date={attendance.date.strftime('%Y-%m-%d')}")
+    
+    return redirect('admin_review_tasks')
